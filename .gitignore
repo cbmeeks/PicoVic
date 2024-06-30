@@ -54,3 +54,6 @@ dkms.conf
 
 # Build files
 cmake-build-debug/
+
+# Project files
+.idea/
