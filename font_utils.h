@@ -1,3 +1,14 @@
+/*
+ * Project: PicoVic
+ *
+ * Copyright (c) 2024 Cecil Meeks
+ * https://github.com/cbmeeks/PicoVic
+ *
+ *
+ * This code is licensed under the MIT license
+ *
+ */
+
 #ifndef _PICOVIC_FONT_UTILS_H
 #define _PICOVIC_FONT_UTILS_H
 

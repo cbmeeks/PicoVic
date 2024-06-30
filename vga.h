@@ -1,11 +1,15 @@
 /*
- * Project: pico-56 - vga
+ * Project: PicoVic - vga
  *
+ * Copyright (c) 2024 Cecil Meeks
+ * https://github.com/cbmeeks/PicoVic
+ *
+ *
+ * Basic VGA code taken from pico-56 - vga by Troy Schrapel
  * Copyright (c) 2023 Troy Schrapel
+ * https://github.com/visrealm/pico-56
  *
  * This code is licensed under the MIT license
- *
- * https://github.com/visrealm/pico-56
  *
  */
 
@@ -41,6 +45,10 @@ void initPalette();
 void setTextCursor(uint8_t x, uint8_t y);
 
 void setPalette(uint8_t paletteNumber, uint16_t color);
+
+void setFGColor(uint8_t x, uint8_t y, uint8_t paletteNumber);
+
+void setBGColor(uint8_t x, uint8_t y, uint8_t paletteNumber);
 
 
 void vgaInit(VgaInitParams params);

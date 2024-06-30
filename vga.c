@@ -1,11 +1,15 @@
 /*
- * Project: pico-56 - vga
+ * Project: PicoVic - vga
  *
+ * Copyright (c) 2024 Cecil Meeks
+ * https://github.com/cbmeeks/PicoVic
+ *
+ *
+ * Basic VGA code taken from pico-56 - vga by Troy Schrapel
  * Copyright (c) 2023 Troy Schrapel
+ * https://github.com/visrealm/pico-56
  *
  * This code is licensed under the MIT license
- *
- * https://github.com/visrealm/pico-56
  *
  */
 
@@ -436,14 +440,28 @@ void setPalette(uint8_t paletteNumber, uint16_t color) {
     }
 }
 
+
+/**
+ * Changes the text buffer foreground color at position X/Y to one of the palette entries.
+ * @param x X position in characters (COLS)
+ * @param y Y position in characters (ROWS)
+ * @param paletteNumber Palette entry number
+ */
 void setFGColor(uint8_t x, uint8_t y, uint8_t paletteNumber) {
     text_fg_clut[y * TEXT_MODE_WIDTH + x] = paletteNumber;
 }
 
+
+/**
+ * Changes the text buffer background color at position X/Y to one of the palette entries.
+ * @param x X position in characters (COLS)
+ * @param y Y position in characters (ROWS)
+ * @param paletteNumber Palette entry number
+ */
+
 void setBGColor(uint8_t x, uint8_t y, uint8_t paletteNumber) {
     text_bg_clut[y * TEXT_MODE_WIDTH + x] = paletteNumber;
 }
-
 
 
 /**
@@ -471,6 +489,14 @@ void drawAsciiCharacter(uint8_t x, uint8_t y, uint8_t character) {
 }
 
 
+/**
+ * Draws a string of ASCII characters that are mapped to PETSCII characters.
+ * NOTE, only the basic upper-case alpha characters, numbers and a few symbols are supported.
+ * Also, drawing starts at the current cursor position and will scroll the screen up if it wraps
+ * passed the last character position (lower right)
+ *
+ * @param str String to print out
+ */
 void drawCharacterString(char *str) {
     while (*str) {
         text_write(*str++);
@@ -512,9 +538,12 @@ void text_write(unsigned char c) {
     }
 }
 
+
 /**
- * Shifts the entire text buffer screen up one line (40 chars).
+ * Shifts the entire text buffer screen up one line.
  * Destroys the very top line and draws a blank line at the bottom.
+ *
+ * TODO look into using memcopy for this!!!
  */
 void shiftCharactersUp() {
     for (int y = 1; y < TEXT_MODE_HEIGHT; y++) {
@@ -532,8 +561,6 @@ void shiftCharactersUp() {
         drawCharacter(i, TEXT_MODE_HEIGHT - 1, BLANK_CHAR);
     }
 }
-
-
 
 
 /**

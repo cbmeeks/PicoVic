@@ -1,16 +1,20 @@
 /*
- * Project: pico-56 - pio utilities
+ * Project: PicoVic - pio
  *
+ * Copyright (c) 2024 Cecil Meeks
+ * https://github.com/cbmeeks/PicoVic
+ *
+ *
+ * Basic VGA code taken from pico-56 - vga by Troy Schrapel
  * Copyright (c) 2023 Troy Schrapel
+ * https://github.com/visrealm/pico-56
  *
  * This code is licensed under the MIT license
  *
- * https://github.com/visrealm/pico-56
- *
  */
 
-#ifndef _PICO56_PIO_UTILS_H
-#define _PICO56_PIO_UTILS_H
+#ifndef _PICOVIC_PIO_UTILS_H
+#define _PICOVIC_PIO_UTILS_H
 
 #include "hardware/pio.h"
 

@@ -1,11 +1,15 @@
 /*
- * Project: pico-56 - episode 1
+ * Project: PicoVic - pio
  *
+ * Copyright (c) 2024 Cecil Meeks
+ * https://github.com/cbmeeks/PicoVic
+ *
+ *
+ * Basic VGA code taken from pico-56 - vga by Troy Schrapel
  * Copyright (c) 2023 Troy Schrapel
+ * https://github.com/visrealm/pico-56
  *
  * This code is licensed under the MIT license
- *
- * https://github.com/visrealm/pico-56
  *
  */
 

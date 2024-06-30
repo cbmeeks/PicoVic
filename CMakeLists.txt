@@ -1,3 +1,9 @@
+###############################################################################
+#   PicoVic
+#
+#   Copyright (c) 2024 Cecil Meeks
+#   https://github.com/cbmeeks/PicoVic
+###############################################################################
 cmake_minimum_required(VERSION 3.26)
 
 # Set environment variables
@@ -22,7 +28,6 @@ add_executable(${PROJECT_NAME}
         main.c
         vga.c
         pio_utils.c
-        images.c
         bit_helper.h
         font_utils.h
 )
@@ -40,7 +45,7 @@ pico_generate_pio_header(${PROJECT_NAME} ${CMAKE_CURRENT_LIST_DIR}/vga.pio OUTPU
 pico_add_extra_outputs(${PROJECT_NAME})
 
 # must match with executable name and source file names
-target_sources(${PROJECT_NAME} PRIVATE main.c vga.c pio_utils.c images.c)
+target_sources(${PROJECT_NAME} PRIVATE main.c vga.c pio_utils.c)
 
 # Link to libraries (gpio, time, etc. functions)
 target_link_libraries(${PROJECT_NAME}
