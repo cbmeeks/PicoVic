@@ -1,1 +1,0 @@
-cmd='/home/cbmeeks/.local/share/JetBrains/Toolbox/apps/clion-nova/bin/cmake/linux/x64/bin/cmake;-DCMAKE_MAKE_PROGRAM:FILEPATH=/home/cbmeeks/.local/share/JetBrains/Toolbox/apps/clion-nova/bin/ninja/linux/x64/ninja;-GNinja;-S;<SOURCE_DIR><SOURCE_SUBDIR>;-B;<BINARY_DIR>'
