@@ -27,9 +27,13 @@
 #include "res/fonts/petscii/petscii.h"
 #include "bit_helper.h"
 #include "font_utils.h"
+#include "screen_modes.h"
+
+#include "res/sprites/balloon.h"
 
 #include <math.h>
 #include <string.h>
+
 
 #define SYNC_PINS_START 0        // first sync pin gpio number
 #define SYNC_PINS_COUNT 2        // number of sync pins (h and v)
@@ -41,30 +45,8 @@
 #define SYNC_SM         0        // vga sync state machine index
 #define RGB_SM          1        // vga rgb state machine index
 
-
-/*
- * timings for 640 x 480 @ 60Hz (from http://tinyvga.com/vga-timing/640x480@60Hz)
- */
-#define PIXEL_CLOCK_KHZ 25175.0f // true pixel clock for the given mode (640 x 480 x 60Hz)
-#define ACTIVE_PIXELS_X   640    // number of horizontal pixels for active area
-#define FPORCH_PIXELS_X    16    // number of horizontal pixels for front porch
-#define HSYNC_PIXELS_X     96    // number of horizontal pixels for sync
-#define BPORCH_PIXELS_X    48    // number of horizontal pixels for back porch
-
-#define ACTIVE_PIXELS_Y   480    // number of vertical pixels for active area
-#define FPORCH_PIXELS_Y    10    // number of vertical pixels for front porch
-#define VSYNC_PIXELS_Y      2    // number of vertical pixels for sync
-#define BPORCH_PIXELS_Y    33    // number of vertical pixels for back porch
-
-
-#define TOTAL_PIXELS_X    (ACTIVE_PIXELS_X + FPORCH_PIXELS_X + HSYNC_PIXELS_X + BPORCH_PIXELS_X)
-#define TOTAL_PIXELS_Y    (ACTIVE_PIXELS_Y + FPORCH_PIXELS_Y + VSYNC_PIXELS_Y + BPORCH_PIXELS_Y)
-
-#define PIXEL_SCALE_X     (ACTIVE_PIXELS_X / VGA_VIRTUAL_WIDTH)
-#define PIXEL_SCALE_Y     (ACTIVE_PIXELS_Y / VGA_VIRTUAL_HEIGHT)
-
-#define HSYNC_PULSE_POSITIVE 0
-#define VSYNC_PULSE_POSITIVE 0
+#define END_OF_SCANLINE_MSG     0x40000000
+#define END_OF_FRAME_MSG        0x80000000
 
 /*
  * sync pio dma data buffers
@@ -76,10 +58,18 @@ uint32_t __aligned(4) syncDataSync[4];    // vertical sync
 uint16_t __aligned(4) rgbDataBufferEven[VGA_VIRTUAL_WIDTH];
 uint16_t __aligned(4) rgbDataBufferOdd[VGA_VIRTUAL_WIDTH];
 
+
 #define SYNC_LINE_ACTIVE 0
 #define SYNC_LINE_FPORCH 1
 #define SYNC_LINE_HSYNC  2
 #define SYNC_LINE_BPORCH 3
+
+
+uint16_t SpriteX = 100;
+uint16_t SpriteY = 90;
+uint8_t SpriteWidth = 8;
+uint8_t SpriteHeight = 8;
+
 
 
 /**
@@ -99,7 +89,7 @@ uint16_t palette_buffer[PALETTECOUNT];
 /**
  * TEXT BUFFER
  * Character buffer used to hold text and other characters.
- * Similar to the $0400 location on a Commodore 64.  Only 1200 bytes vs 1000.
+ * Similar to the $0400 location on a Commodore 64.
  */
 #define TEXT_MODE_COUNT (TEXT_MODE_WIDTH * TEXT_MODE_HEIGHT)
 #define BLANK_CHAR 32
@@ -118,6 +108,7 @@ uint8_t text_bg_clut[TEXT_MODE_COUNT];
 static int syncDmaChan = 0;
 static int rgbDmaChan = 0;
 static VgaInitParams vgaParams;
+static ScreenModeParams screenModeParams;
 
 
 /*
@@ -128,37 +119,41 @@ static void buildSyncData(void) {
     const uint32_t pioClockKHz = sysClockKHz;
 
     // compute number of pio ticks for a single pixel
-    const float pioClocksPerPixel = pioClockKHz / PIXEL_CLOCK_KHZ;
+    const float pioClocksPerPixel = (float) pioClockKHz / screenModeParams.pixel_clock_in_khz;
 
-    // compute pio ticks for each phase of the screen_Mode0_Scanline
-    const uint32_t activeTicks = round(pioClocksPerPixel * (float) ACTIVE_PIXELS_X) - vga_sync_SETUP_OVERHEAD;
-    const uint32_t fPorchTicks = round(pioClocksPerPixel * (float) FPORCH_PIXELS_X) - vga_sync_SETUP_OVERHEAD;
-    const uint32_t syncTicks = round(pioClocksPerPixel * (float) HSYNC_PIXELS_X) - vga_sync_SETUP_OVERHEAD;
-    const uint32_t bPorchTicks = round(pioClocksPerPixel * (float) BPORCH_PIXELS_X) - vga_sync_SETUP_OVERHEAD;
+    // compute pio ticks for each phase of the scanline
+    const uint32_t activeTicks =
+            round(pioClocksPerPixel * (float) screenModeParams.active_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t fPorchTicks =
+            round(pioClocksPerPixel * (float) screenModeParams.front_porch_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t syncTicks =
+            round(pioClocksPerPixel * (float) screenModeParams.hsync_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t bPorchTicks =
+            round(pioClocksPerPixel * (float) screenModeParams.back_porch_x_pixels) - vga_sync_SETUP_OVERHEAD;
 
     // compute sync bits
-    const uint32_t hSyncOff = (HSYNC_PULSE_POSITIVE ? 0b00 : 0b01) << vga_sync_WORD_SYNC_OFFSET;
-    const uint32_t hSyncOn = (HSYNC_PULSE_POSITIVE ? 0b01 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
-    const uint32_t vSyncOff = (VSYNC_PULSE_POSITIVE ? 0b00 : 0b10) << vga_sync_WORD_SYNC_OFFSET;
-    const uint32_t vSyncOn = (VSYNC_PULSE_POSITIVE ? 0b10 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t hSyncOff = (screenModeParams.hsync_pulse_positive ? 0b00 : 0b01) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t hSyncOn = (screenModeParams.hsync_pulse_positive ? 0b01 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t vSyncOff = (screenModeParams.vsync_pulse_positive ? 0b00 : 0b10) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t vSyncOn = (screenModeParams.vsync_pulse_positive ? 0b10 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
 
     // compute exec instructions
     const uint32_t instIrq = pio_encode_irq_set(false, vga_rgb_RGB_IRQ) << vga_sync_WORD_EXEC_OFFSET;
     const uint32_t instNop = pio_encode_nop() << vga_sync_WORD_EXEC_OFFSET;
 
-    // sync data for an active display screen_Mode0_Scanline
+    // sync data for an active display scanline
     syncDataActive[SYNC_LINE_ACTIVE] = instIrq | vSyncOff | hSyncOff | activeTicks;
     syncDataActive[SYNC_LINE_FPORCH] = instNop | vSyncOff | hSyncOff | fPorchTicks;
     syncDataActive[SYNC_LINE_HSYNC] = instNop | vSyncOff | hSyncOn | syncTicks;
     syncDataActive[SYNC_LINE_BPORCH] = instNop | vSyncOff | hSyncOff | bPorchTicks;
 
-    // sync data for a front or back porch screen_Mode0_Scanline
+    // sync data for a front or back porch scanline
     syncDataPorch[SYNC_LINE_ACTIVE] = instNop | vSyncOff | hSyncOff | activeTicks;
     syncDataPorch[SYNC_LINE_FPORCH] = instNop | vSyncOff | hSyncOff | fPorchTicks;
     syncDataPorch[SYNC_LINE_HSYNC] = instNop | vSyncOff | hSyncOn | syncTicks;
     syncDataPorch[SYNC_LINE_BPORCH] = instNop | vSyncOff | hSyncOff | bPorchTicks;
 
-    // sync data for a vsync screen_Mode0_Scanline
+    // sync data for a vsync scanline
     syncDataSync[SYNC_LINE_ACTIVE] = instNop | vSyncOn | hSyncOff | activeTicks;
     syncDataSync[SYNC_LINE_FPORCH] = instNop | vSyncOn | hSyncOff | fPorchTicks;
     syncDataSync[SYNC_LINE_HSYNC] = instNop | vSyncOn | hSyncOn | syncTicks;
@@ -172,7 +167,7 @@ static void buildSyncData(void) {
 static void vgaInitSync(void) {
     buildSyncData();
 
-    // initalize sync pins for pio
+    // initialize sync pins for pio
     for (uint i = 0; i < SYNC_PINS_COUNT; ++i) {
         pio_gpio_init(VGA_PIO, SYNC_PINS_START + i);
     }
@@ -211,17 +206,15 @@ static void vgaInitRgb(void) {
     const uint32_t sysClockKHz = clock_get_hz(clk_sys) / 1000;
     uint32_t pioClockKHz = sysClockKHz;
     float pioClkDiv = 1.0f;
-
-    float pioClocksPerScaledPixel = pioClockKHz * PIXEL_SCALE_X / PIXEL_CLOCK_KHZ;
+    float pioClocksPerScaledPixel = pioClockKHz * screenModeParams.pixel_scale_x / screenModeParams.pixel_clock_in_khz;
     while (pioClocksPerScaledPixel > 31) {
         ++pioClkDiv;
         pioClockKHz = sysClockKHz / pioClkDiv;
-        pioClocksPerScaledPixel = pioClockKHz * PIXEL_SCALE_X / PIXEL_CLOCK_KHZ;
+        pioClocksPerScaledPixel = pioClockKHz * screenModeParams.pixel_scale_x / screenModeParams.pixel_clock_in_khz;
     }
 
     // compute number of pio ticks for a single pixel
-    const float pioClocksPerPixel = pioClockKHz / PIXEL_CLOCK_KHZ;
-
+    const float pioClocksPerPixel = pioClockKHz / screenModeParams.pixel_clock_in_khz;
     const uint32_t rgbCyclesPerPixel = round(pioClocksPerScaledPixel);
 
     // copy the rgb program and set the appropriate pixel delay
@@ -242,7 +235,7 @@ static void vgaInitRgb(void) {
 
     // add rgb pio program
     pio_sm_set_consecutive_pindirs(VGA_PIO, RGB_SM, RGB_PINS_START, RGB_PINS_COUNT, true);
-    pio_set_y(VGA_PIO, RGB_SM, VGA_VIRTUAL_WIDTH - 1);
+    pio_set_y(VGA_PIO, RGB_SM, screenModeParams.vga_virtual_pixel_width - 1);
 
     uint rgbProgOffset = pio_add_program(VGA_PIO, &rgbProgram);
     pio_sm_config rgbConfig = vga_rgb_program_get_default_config(rgbProgOffset);
@@ -264,7 +257,8 @@ static void vgaInitRgb(void) {
     channel_config_set_dreq(&rgbDmaChanConfig, pio_get_dreq(VGA_PIO, RGB_SM, true));
 
     // setup the dma channel and set it going
-    dma_channel_configure(rgbDmaChan, &rgbDmaChanConfig, &VGA_PIO->txf[RGB_SM], rgbDataBufferEven, VGA_VIRTUAL_WIDTH,
+    dma_channel_configure(rgbDmaChan, &rgbDmaChanConfig, &VGA_PIO->txf[RGB_SM], rgbDataBufferEven,
+                          screenModeParams.vga_virtual_pixel_width,
                           false);
     dma_channel_set_irq0_enabled(rgbDmaChan, true);
 }
@@ -279,16 +273,16 @@ static void __time_critical_func(dmaIrqHandler)(void) {
     if (dma_hw->ints0 & (1u << syncDmaChan)) {
         dma_hw->ints0 = 1u << syncDmaChan;
 
-        if (++currentTimingLine >= TOTAL_PIXELS_Y) {
+        if (++currentTimingLine >= screenModeParams.total_y_pixels) {
             currentTimingLine = 0;
             currentDisplayLine = 0;
         }
 
-        if (currentTimingLine < VSYNC_PIXELS_Y) {
+        if (currentTimingLine < screenModeParams.vsync_y_pixels) {
             dma_channel_set_read_addr(syncDmaChan, syncDataSync, true);
-        } else if (currentTimingLine < (VSYNC_PIXELS_Y + BPORCH_PIXELS_Y)) {
+        } else if (currentTimingLine < (screenModeParams.vsync_y_pixels + screenModeParams.back_porch_y_pixels)) {
             dma_channel_set_read_addr(syncDmaChan, syncDataPorch, true);
-        } else if (currentTimingLine < (TOTAL_PIXELS_Y - FPORCH_PIXELS_Y)) {
+        } else if (currentTimingLine < (screenModeParams.total_y_pixels - screenModeParams.front_porch_y_pixels)) {
             dma_channel_set_read_addr(syncDmaChan, syncDataActive, true);
         } else {
             dma_channel_set_read_addr(syncDmaChan, syncDataPorch, true);
@@ -299,14 +293,14 @@ static void __time_critical_func(dmaIrqHandler)(void) {
     if (dma_hw->ints0 & (1u << rgbDmaChan)) {
         dma_hw->ints0 = 1u << rgbDmaChan;
 
-        divmod_result_t pxLineVal = divmod_u32u32(++currentDisplayLine, PIXEL_SCALE_Y);
+        divmod_result_t pxLineVal = divmod_u32u32(++currentDisplayLine, screenModeParams.pixel_scale_y);
         uint32_t pxLine = to_quotient_u32(pxLineVal);
         uint32_t pxLineRpt = to_remainder_u32(pxLineVal);
 
         dma_channel_set_read_addr(rgbDmaChan, (pxLine & 1) ? rgbDataBufferOdd : rgbDataBufferEven, true);
 
         // need a new line every X display lines
-        if ((pxLineRpt == 0)) {
+        if (pxLineRpt == 0) {
             uint32_t requestLine = pxLine + 1;
             if (requestLine >= VGA_VIRTUAL_HEIGHT) requestLine -= VGA_VIRTUAL_HEIGHT;
 
@@ -326,14 +320,24 @@ static void initDma() {
     dma_channel_start(rgbDmaChan);
 }
 
+
 /*
- * main vga loop
+ * Main VGA Loop
+ * Will execute "end of frame" and "end of line" callbacks if they are available.
  */
 static void vgaLoop() {
+    uint64_t frame_counter = 0;
+
     while (1) {
         uint32_t message = multicore_fifo_pop_blocking();
-
-        if (message & 0x01) {
+        if (message == END_OF_FRAME_MSG) {
+            if (vgaParams.endOfFrameFn)
+                vgaParams.endOfFrameFn(frame_counter);
+            ++frame_counter;
+        } else if ((message & END_OF_SCANLINE_MSG) != 0) {
+            if (vgaParams.endOfScanlineFn)
+                vgaParams.endOfScanlineFn();
+        } else if (message & 0x01) {
             vgaParams.scanlineFn(message & 0xfff, rgbDataBufferOdd);
         } else {
             vgaParams.scanlineFn(message & 0xfff, rgbDataBufferEven);
@@ -345,8 +349,9 @@ static void vgaLoop() {
 /*
  * initialise the vga
  */
-void vgaInit(VgaInitParams params) {
+void vgaInit(VgaInitParams params, ScreenModeParams modeParams) {
     vgaParams = params;
+    screenModeParams = modeParams;
 
     vgaInitSync();
     vgaInitRgb();
@@ -360,14 +365,10 @@ void vgaInit(VgaInitParams params) {
 }
 
 
-void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[320]) {
+void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]) {
 //    memcpy(pixels, frame_buffer + raster_y * VGA_VIRTUAL_WIDTH, VGA_VIRTUAL_WIDTH * sizeof(uint16_t));
 
-    // output the background TODO: is this needed?
-    for (int x = 0; x < VGA_VIRTUAL_WIDTH; ++x) {
-        pixels[x] = 0x0000;
-    }
-
+    // Draw chars
     if (raster_y >= 0 && raster_y < VGA_VIRTUAL_HEIGHT) {
         // Grab row index based off current raster Y position
         uint8_t rowIdx = raster_y / CHAR_HEIGHT;
@@ -393,6 +394,79 @@ void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[320]) {
     }
 }
 
+uint16_t colors[4] = {
+        0x0000,
+        0x0f00,
+        0x00f0,
+        0x000f
+};
+
+
+void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]) {
+    // Draw chars
+    if (raster_y >= 0 && raster_y < VGA_VIRTUAL_HEIGHT) {
+        // Grab row index based off current raster Y position
+        uint8_t rowIdx = raster_y / CHAR_HEIGHT;
+        uint8_t lineIdx = raster_y % 8;
+
+        for (uint16_t colIdx = 0; colIdx < (TEXT_MODE_WIDTH * CHAR_WIDTH); colIdx += CHAR_WIDTH) {
+            uint8_t charIdx = colIdx / CHAR_WIDTH;
+            uint16_t bufferIdx = rowIdx * TEXT_MODE_WIDTH + charIdx;
+            uint8_t character = text_buffer[bufferIdx];
+            unsigned char line = petscii[character][lineIdx];
+            uint16_t fgcolor = palette_buffer[text_fg_clut[bufferIdx]];
+            uint16_t bgcolor = palette_buffer[text_bg_clut[bufferIdx]];
+
+            pixels[colIdx + 0] = CHECK_BIT(line, (7 - 0)) ? fgcolor : bgcolor;
+            pixels[colIdx + 1] = CHECK_BIT(line, (7 - 1)) ? fgcolor : bgcolor;
+            pixels[colIdx + 2] = CHECK_BIT(line, (7 - 2)) ? fgcolor : bgcolor;
+            pixels[colIdx + 3] = CHECK_BIT(line, (7 - 3)) ? fgcolor : bgcolor;
+            pixels[colIdx + 4] = CHECK_BIT(line, (7 - 4)) ? fgcolor : bgcolor;
+            pixels[colIdx + 5] = CHECK_BIT(line, (7 - 5)) ? fgcolor : bgcolor;
+            pixels[colIdx + 6] = CHECK_BIT(line, (7 - 6)) ? fgcolor : bgcolor;
+            pixels[colIdx + 7] = CHECK_BIT(line, (7 - 7)) ? fgcolor : bgcolor;
+        }
+    }
+
+    if (raster_y >= SpriteY && raster_y < (SpriteY + SpriteHeight)) {
+        int offset = (raster_y - SpriteY);
+
+        uint16_t line = balloon[offset];
+        uint8_t c1 = ((line & 0b1100000000000000) >> 14);
+        uint8_t c2 = ((line & 0b0011000000000000) >> 12);
+        uint8_t c3 = ((line & 0b0000110000000000) >> 10);
+        uint8_t c4 = ((line & 0b0000001100000000) >> 8);
+        uint8_t c5 = ((line & 0b0000000011000000) >> 6);
+        uint8_t c6 = ((line & 0b0000000000110000) >> 4);
+        uint8_t c7 = ((line & 0b0000000000001100) >> 2);
+        uint8_t c8 = ((line & 0b0000000000000011) >> 0);
+
+        if (c1 != 0) pixels[SpriteX + 0] = colors[c1];
+        if (c2 != 0) pixels[SpriteX + 1] = colors[c2];
+        if (c3 != 0) pixels[SpriteX + 2] = colors[c3];
+        if (c4 != 0) pixels[SpriteX + 3] = colors[c4];
+        if (c5 != 0) pixels[SpriteX + 4] = colors[c5];
+        if (c6 != 0) pixels[SpriteX + 5] = colors[c6];
+        if (c7 != 0) pixels[SpriteX + 6] = colors[c7];
+        if (c8 != 0) pixels[SpriteX + 7] = colors[c8];
+
+    }
+
+    // About 60 fps
+    if (raster_y == screenModeParams.vga_virtual_pixel_height - 1) {
+        updateSprite();
+    }
+
+}
+
+
+void updateSprite() {
+//    SpriteX = SpriteX + 0.5f;
+//    if (SpriteX > 300) SpriteX = 0;
+
+    SpriteY++;
+    if (SpriteY > 240) SpriteY = 0;
+}
 
 void initCharMode() {
     initPalette();
@@ -573,9 +647,9 @@ void shiftCharactersUp() {
  * @param color color to draw
  */
 void drawPixel(uint16_t x, uint16_t y, uint16_t color) {
-    x %= VGA_VIRTUAL_WIDTH;
+    x %= screenModeParams.vga_virtual_pixel_width;
     y %= VGA_VIRTUAL_HEIGHT;
-    frame_buffer[y * VGA_VIRTUAL_WIDTH + x] = color;
+    frame_buffer[y * screenModeParams.vga_virtual_pixel_width + x] = color;
 }
 
 void drawVLine(uint16_t x, uint16_t y, uint16_t h, uint16_t color) {

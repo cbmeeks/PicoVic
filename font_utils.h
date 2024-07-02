@@ -9,8 +9,7 @@
  *
  */
 
-#ifndef _PICOVIC_FONT_UTILS_H
-#define _PICOVIC_FONT_UTILS_H
+#pragma once
 
 unsigned char ascii_to_petscii[256] = {
         0,      // 0
@@ -127,4 +126,3 @@ unsigned char ascii_to_petscii[256] = {
         0, 0                             // 254, 255
 };
 
-#endif

@@ -30,6 +30,9 @@ add_executable(${PROJECT_NAME}
         pio_utils.c
         bit_helper.h
         font_utils.h
+        screen_modes.c
+        screen_modes.h
+
 )
 
 # by default the header is generated into the build dir
