@@ -33,6 +33,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 
 #define SYNC_PINS_START 0        // first sync pin gpio number
@@ -68,7 +69,8 @@ uint16_t __aligned(4) rgbDataBufferOdd[VGA_VIRTUAL_WIDTH];
 uint16_t SpriteX = 100;
 uint16_t SpriteY = 90;
 uint8_t SpriteWidth = 8;
-uint8_t SpriteHeight = 8;
+uint8_t SpriteHeight = 16;
+
 
 
 
@@ -101,6 +103,19 @@ uint8_t text_buffer[TEXT_MODE_COUNT];
 uint8_t text_fg_clut[TEXT_MODE_COUNT];
 uint8_t text_bg_clut[TEXT_MODE_COUNT];
 
+/*
+ * Sprites
+ */
+#define NUMBER_OF_SPRITES 64
+#define NUMBER_OF_SPRITE_PALETTES 4
+static Sprite sprites[NUMBER_OF_SPRITES] = {};
+
+static SpritePalette sprite_palettes[NUMBER_OF_SPRITE_PALETTES] = {
+        {0x0000, 0x0f00, 0x00f0, 0x0fa4},
+        {0x0000, 0x0ff0, 0x04f1, 0x05a5},
+        {0x0000, 0x0444, 0x0fff, 0x0f03},
+        {0x0000, 0x0888, 0x0f0f, 0x0f37},
+};
 
 /*
  * file scope
@@ -394,13 +409,6 @@ void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
     }
 }
 
-uint16_t colors[4] = {
-        0x0000,
-        0x0f00,
-        0x00f0,
-        0x000f
-};
-
 
 void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]) {
     // Draw chars
@@ -428,28 +436,65 @@ void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
         }
     }
 
-    if (raster_y >= SpriteY && raster_y < (SpriteY + SpriteHeight)) {
-        int offset = (raster_y - SpriteY);
+    uint16_t w = screenModeParams.vga_virtual_pixel_width;
+    for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
+        if (raster_y >= sprites[s].y &&
+            raster_y < (sprites[s].y + SpriteHeight) &&
+            raster_y < screenModeParams.vga_virtual_pixel_height) {
 
-        uint16_t line = balloon[offset];
-        uint8_t c1 = ((line & 0b1100000000000000) >> 14);
-        uint8_t c2 = ((line & 0b0011000000000000) >> 12);
-        uint8_t c3 = ((line & 0b0000110000000000) >> 10);
-        uint8_t c4 = ((line & 0b0000001100000000) >> 8);
-        uint8_t c5 = ((line & 0b0000000011000000) >> 6);
-        uint8_t c6 = ((line & 0b0000000000110000) >> 4);
-        uint8_t c7 = ((line & 0b0000000000001100) >> 2);
-        uint8_t c8 = ((line & 0b0000000000000011) >> 0);
+            int offset = (raster_y - sprites[s].y);
 
-        if (c1 != 0) pixels[SpriteX + 0] = colors[c1];
-        if (c2 != 0) pixels[SpriteX + 1] = colors[c2];
-        if (c3 != 0) pixels[SpriteX + 2] = colors[c3];
-        if (c4 != 0) pixels[SpriteX + 3] = colors[c4];
-        if (c5 != 0) pixels[SpriteX + 4] = colors[c5];
-        if (c6 != 0) pixels[SpriteX + 5] = colors[c6];
-        if (c7 != 0) pixels[SpriteX + 6] = colors[c7];
-        if (c8 != 0) pixels[SpriteX + 7] = colors[c8];
+            uint32_t line = samus[offset];
+            uint8_t c0 = ((line & 0b11000000000000000000000000000000) >> 30);
+            uint8_t c1 = ((line & 0b00110000000000000000000000000000) >> 28);
+            uint8_t c2 = ((line & 0b00001100000000000000000000000000) >> 26);
+            uint8_t c3 = ((line & 0b00000011000000000000000000000000) >> 24);
+            uint8_t c4 = ((line & 0b00000000110000000000000000000000) >> 22);
+            uint8_t c5 = ((line & 0b00000000001100000000000000000000) >> 20);
+            uint8_t c6 = ((line & 0b00000000000011000000000000000000) >> 18);
+            uint8_t c7 = ((line & 0b00000000000000110000000000000000) >> 16);
+            uint8_t c8 = ((line & 0b00000000000000001100000000000000) >> 14);
+            uint8_t c9 = ((line & 0b00000000000000000011000000000000) >> 12);
+            uint8_t ca = ((line & 0b00000000000000000000110000000000) >> 10);
+            uint8_t cb = ((line & 0b00000000000000000000001100000000) >> 8);
+            uint8_t cc = ((line & 0b00000000000000000000000011000000) >> 6);
+            uint8_t cd = ((line & 0b00000000000000000000000000110000) >> 4);
+            uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
+            uint8_t cf = ((line & 0b00000000000000000000000000000011) >> 0);
 
+            if (c0 != 0 && sprites[s].x + 0 >= 0 && sprites[s].x + 0 < w)
+                pixels[sprites[s].x + 0] = sprite_palettes[sprites[s].palette].color[c0];
+            if (c1 != 0 && sprites[s].x + 1 >= 0 && sprites[s].x + 1 < w)
+                pixels[sprites[s].x + 1] = sprite_palettes[sprites[s].palette].color[c1];
+            if (c2 != 0 && sprites[s].x + 2 >= 0 && sprites[s].x + 2 < w)
+                pixels[sprites[s].x + 2] = sprite_palettes[sprites[s].palette].color[c2];
+            if (c3 != 0 && sprites[s].x + 3 >= 0 && sprites[s].x + 3 < w)
+                pixels[sprites[s].x + 3] = sprite_palettes[sprites[s].palette].color[c3];
+            if (c4 != 0 && sprites[s].x + 4 >= 0 && sprites[s].x + 4 < w)
+                pixels[sprites[s].x + 4] = sprite_palettes[sprites[s].palette].color[c4];
+            if (c5 != 0 && sprites[s].x + 5 >= 0 && sprites[s].x + 5 < w)
+                pixels[sprites[s].x + 5] = sprite_palettes[sprites[s].palette].color[c5];
+            if (c6 != 0 && sprites[s].x + 6 >= 0 && sprites[s].x + 6 < w)
+                pixels[sprites[s].x + 6] = sprite_palettes[sprites[s].palette].color[c6];
+            if (c7 != 0 && sprites[s].x + 7 >= 0 && sprites[s].x + 7 < w)
+                pixels[sprites[s].x + 7] = sprite_palettes[sprites[s].palette].color[c7];
+            if (c8 != 0 && sprites[s].x + 8 >= 0 && sprites[s].x + 8 < w)
+                pixels[sprites[s].x + 8] = sprite_palettes[sprites[s].palette].color[c8];
+            if (c9 != 0 && sprites[s].x + 9 >= 0 && sprites[s].x + 9 < w)
+                pixels[sprites[s].x + 9] = sprite_palettes[sprites[s].palette].color[c9];
+            if (ca != 0 && sprites[s].x + 10 >= 0 && sprites[s].x + 10 < w)
+                pixels[sprites[s].x + 10] = sprite_palettes[sprites[s].palette].color[ca];
+            if (cb != 0 && sprites[s].x + 11 >= 0 && sprites[s].x + 11 < w)
+                pixels[sprites[s].x + 11] = sprite_palettes[sprites[s].palette].color[cb];
+            if (cc != 0 && sprites[s].x + 12 >= 0 && sprites[s].x + 12 < w)
+                pixels[sprites[s].x + 12] = sprite_palettes[sprites[s].palette].color[cc];
+            if (cd != 0 && sprites[s].x + 13 >= 0 && sprites[s].x + 13 < w)
+                pixels[sprites[s].x + 13] = sprite_palettes[sprites[s].palette].color[cd];
+            if (ce != 0 && sprites[s].x + 14 >= 0 && sprites[s].x + 14 < w)
+                pixels[sprites[s].x + 14] = sprite_palettes[sprites[s].palette].color[ce];
+            if (cf != 0 && sprites[s].x + 15 >= 0 && sprites[s].x + 15 < w)
+                pixels[sprites[s].x + 15] = sprite_palettes[sprites[s].palette].color[cf];
+        }
     }
 
     // About 60 fps
@@ -460,12 +505,26 @@ void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
 }
 
 
-void updateSprite() {
-//    SpriteX = SpriteX + 0.5f;
-//    if (SpriteX > 300) SpriteX = 0;
+void initSprites() {
+    for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
+        sprites[s].x = (rand() % (300 + 1));
+        sprites[s].y = (rand() % (200 + 1));
+        sprites[s].x_speed = (rand() % (3 + 1));
+        sprites[s].y_speed = (rand() % (3 + 1));
 
-    SpriteY++;
-    if (SpriteY > 240) SpriteY = 0;
+        sprites[s].palette = (rand() % (3 + 1));
+        if (sprites[s].palette < 0 || sprites[s].palette > 3) sprites[s].palette = 1;
+    }
+}
+
+void updateSprite() {
+
+    for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
+        sprites[s].x = sprites[s].x + sprites[s].x_speed;
+        sprites[s].y = sprites[s].y + sprites[s].y_speed;
+
+        if (sprites[s].x > screenModeParams.vga_virtual_pixel_width) sprites[s].x = 0;
+    }
 }
 
 void initCharMode() {

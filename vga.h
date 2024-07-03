@@ -43,6 +43,18 @@ typedef struct {
     vgaEndOfScanlineFn endOfScanlineFn;
 } VgaInitParams;
 
+typedef struct {
+    uint16_t x;
+    uint8_t y;
+    uint8_t x_speed;
+    uint8_t y_speed;
+    uint8_t palette;
+} Sprite;
+
+typedef struct {
+    uint16_t color[4];
+} SpritePalette;
+
 
 // Setup
 void vgaInit(VgaInitParams params, ScreenModeParams modeParams);
@@ -70,4 +82,5 @@ void drawVLine(uint16_t x, uint16_t y, uint16_t h, uint16_t color);
 void drawHLine(uint16_t x, uint16_t y, uint16_t w, uint16_t color);
 
 // Sprites
+void initSprites();
 void updateSprite();

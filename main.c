@@ -31,6 +31,7 @@ int main(void) {
 
     vgaInit(params, getScreenModeParams(SCREEN_MODE_0));
     initCharMode();
+    initSprites();
 
 //    setTextCursor(0, 20);
 //    drawCharacterString("320X200 PIXELS...");
