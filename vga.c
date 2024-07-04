@@ -29,11 +29,10 @@
 #include "font_utils.h"
 #include "screen_modes.h"
 
-#include "res/sprites/balloon.h"
+#include "res/sprites/sprite_defs.h"
 
 #include <math.h>
 #include <string.h>
-#include <stdlib.h>
 
 
 #define SYNC_PINS_START 0        // first sync pin gpio number
@@ -64,13 +63,6 @@ uint16_t __aligned(4) rgbDataBufferOdd[VGA_VIRTUAL_WIDTH];
 #define SYNC_LINE_FPORCH 1
 #define SYNC_LINE_HSYNC  2
 #define SYNC_LINE_BPORCH 3
-
-
-uint16_t SpriteX = 100;
-uint16_t SpriteY = 90;
-uint8_t SpriteWidth = 8;
-uint8_t SpriteHeight = 16;
-
 
 
 
@@ -106,12 +98,9 @@ uint8_t text_bg_clut[TEXT_MODE_COUNT];
 /*
  * Sprites
  */
-#define NUMBER_OF_SPRITES 64
-#define NUMBER_OF_SPRITE_PALETTES 4
 static Sprite sprites[NUMBER_OF_SPRITES] = {};
-
 static SpritePalette sprite_palettes[NUMBER_OF_SPRITE_PALETTES] = {
-        {0x0000, 0x0f00, 0x00f0, 0x0fa4},
+        {0x0000, 0x00ff, 0x0fa4, 0x00f0},
         {0x0000, 0x0ff0, 0x04f1, 0x05a5},
         {0x0000, 0x0444, 0x0fff, 0x0f03},
         {0x0000, 0x0888, 0x0f0f, 0x0f37},
@@ -380,9 +369,7 @@ void vgaInit(VgaInitParams params, ScreenModeParams modeParams) {
 }
 
 
-void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]) {
-//    memcpy(pixels, frame_buffer + raster_y * VGA_VIRTUAL_WIDTH, VGA_VIRTUAL_WIDTH * sizeof(uint16_t));
-
+void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
     // Draw chars
     if (raster_y >= 0 && raster_y < VGA_VIRTUAL_HEIGHT) {
         // Grab row index based off current raster Y position
@@ -409,10 +396,9 @@ void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
     }
 }
 
-
-void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]) {
+void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
     // Draw chars
-    if (raster_y >= 0 && raster_y < VGA_VIRTUAL_HEIGHT) {
+    if (raster_y >= 0 && raster_y < screenModeParams.vga_virtual_pixel_height) {
         // Grab row index based off current raster Y position
         uint8_t rowIdx = raster_y / CHAR_HEIGHT;
         uint8_t lineIdx = raster_y % 8;
@@ -438,13 +424,14 @@ void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
 
     uint16_t w = screenModeParams.vga_virtual_pixel_width;
     for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
-        if (raster_y >= sprites[s].y &&
-            raster_y < (sprites[s].y + SpriteHeight) &&
+        if (sprites[s].visible &&
+            raster_y >= sprites[s].y &&
+            raster_y < (sprites[s].y + sprites[s].height) &&
             raster_y < screenModeParams.vga_virtual_pixel_height) {
 
             int offset = (raster_y - sprites[s].y);
+            uint32_t line = sprites[s].frame[offset];
 
-            uint32_t line = samus[offset];
             uint8_t c0 = ((line & 0b11000000000000000000000000000000) >> 30);
             uint8_t c1 = ((line & 0b00110000000000000000000000000000) >> 28);
             uint8_t c2 = ((line & 0b00001100000000000000000000000000) >> 26);
@@ -464,34 +451,49 @@ void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
 
             if (c0 != 0 && sprites[s].x + 0 >= 0 && sprites[s].x + 0 < w)
                 pixels[sprites[s].x + 0] = sprite_palettes[sprites[s].palette].color[c0];
+
             if (c1 != 0 && sprites[s].x + 1 >= 0 && sprites[s].x + 1 < w)
                 pixels[sprites[s].x + 1] = sprite_palettes[sprites[s].palette].color[c1];
+
             if (c2 != 0 && sprites[s].x + 2 >= 0 && sprites[s].x + 2 < w)
                 pixels[sprites[s].x + 2] = sprite_palettes[sprites[s].palette].color[c2];
+
             if (c3 != 0 && sprites[s].x + 3 >= 0 && sprites[s].x + 3 < w)
                 pixels[sprites[s].x + 3] = sprite_palettes[sprites[s].palette].color[c3];
+
             if (c4 != 0 && sprites[s].x + 4 >= 0 && sprites[s].x + 4 < w)
                 pixels[sprites[s].x + 4] = sprite_palettes[sprites[s].palette].color[c4];
+
             if (c5 != 0 && sprites[s].x + 5 >= 0 && sprites[s].x + 5 < w)
                 pixels[sprites[s].x + 5] = sprite_palettes[sprites[s].palette].color[c5];
+
             if (c6 != 0 && sprites[s].x + 6 >= 0 && sprites[s].x + 6 < w)
                 pixels[sprites[s].x + 6] = sprite_palettes[sprites[s].palette].color[c6];
+
             if (c7 != 0 && sprites[s].x + 7 >= 0 && sprites[s].x + 7 < w)
                 pixels[sprites[s].x + 7] = sprite_palettes[sprites[s].palette].color[c7];
+
             if (c8 != 0 && sprites[s].x + 8 >= 0 && sprites[s].x + 8 < w)
                 pixels[sprites[s].x + 8] = sprite_palettes[sprites[s].palette].color[c8];
+
             if (c9 != 0 && sprites[s].x + 9 >= 0 && sprites[s].x + 9 < w)
                 pixels[sprites[s].x + 9] = sprite_palettes[sprites[s].palette].color[c9];
+
             if (ca != 0 && sprites[s].x + 10 >= 0 && sprites[s].x + 10 < w)
                 pixels[sprites[s].x + 10] = sprite_palettes[sprites[s].palette].color[ca];
+
             if (cb != 0 && sprites[s].x + 11 >= 0 && sprites[s].x + 11 < w)
                 pixels[sprites[s].x + 11] = sprite_palettes[sprites[s].palette].color[cb];
+
             if (cc != 0 && sprites[s].x + 12 >= 0 && sprites[s].x + 12 < w)
                 pixels[sprites[s].x + 12] = sprite_palettes[sprites[s].palette].color[cc];
+
             if (cd != 0 && sprites[s].x + 13 >= 0 && sprites[s].x + 13 < w)
                 pixels[sprites[s].x + 13] = sprite_palettes[sprites[s].palette].color[cd];
+
             if (ce != 0 && sprites[s].x + 14 >= 0 && sprites[s].x + 14 < w)
                 pixels[sprites[s].x + 14] = sprite_palettes[sprites[s].palette].color[ce];
+
             if (cf != 0 && sprites[s].x + 15 >= 0 && sprites[s].x + 15 < w)
                 pixels[sprites[s].x + 15] = sprite_palettes[sprites[s].palette].color[cf];
         }
@@ -501,19 +503,23 @@ void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]
     if (raster_y == screenModeParams.vga_virtual_pixel_height - 1) {
         updateSprite();
     }
+}
 
+void screen_Mode2_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
+//    memcpy(pixels, toucan + raster_y * VGA_VIRTUAL_WIDTH, VGA_VIRTUAL_WIDTH * sizeof(uint16_t));
 }
 
 
 void initSprites() {
     for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
-        sprites[s].x = (rand() % (300 + 1));
-        sprites[s].y = (rand() % (200 + 1));
-        sprites[s].x_speed = (rand() % (3 + 1));
-        sprites[s].y_speed = (rand() % (3 + 1));
-
-        sprites[s].palette = (rand() % (3 + 1));
-        if (sprites[s].palette < 0 || sprites[s].palette > 3) sprites[s].palette = 1;
+        sprites[s].x = 0;
+        sprites[s].y = 0;
+        sprites[s].frame = blank;
+        sprites[s].x_speed = 0;
+        sprites[s].y_speed = 0;
+        sprites[s].height = 16;
+        sprites[s].palette = 0;
+        sprites[s].visible = false;
     }
 }
 
@@ -526,6 +532,30 @@ void updateSprite() {
         if (sprites[s].x > screenModeParams.vga_virtual_pixel_width) sprites[s].x = 0;
     }
 }
+
+void setSprite(uint8_t number, uint16_t x, uint8_t y, uint8_t x_speed, uint8_t y_speed) {
+    if (number >= NUMBER_OF_SPRITES) return;
+    sprites[number].x = x;
+    sprites[number].y = y;
+    sprites[number].x_speed = x_speed;
+    sprites[number].y_speed = y_speed;
+}
+
+void setSpriteFrame(uint8_t number, uint32_t *frame) {
+    if (number >= NUMBER_OF_SPRITES) return;
+    sprites[number].frame = frame;
+}
+
+void setSpriteHeight(uint8_t number, uint8_t height) {
+    if (number >= NUMBER_OF_SPRITES) return;
+    sprites[number].height = height;
+}
+
+void setSpriteVisible(uint8_t number, bool visible) {
+    if (number >= NUMBER_OF_SPRITES) return;
+    sprites[number].visible = visible;
+}
+
 
 void initCharMode() {
     initPalette();
@@ -653,7 +683,17 @@ void text_write(unsigned char c) {
             shiftCharactersUp();
         }
     } else if (c == '\t') {
+        // tab moves the cursor over TAB_SPACES.  It will wrap around and adjust the screen.
+        cursor_x = cursor_x + TAB_SPACES;
+        if (cursor_x >= TEXT_MODE_WIDTH) {
+            cursor_x = cursor_x % TEXT_MODE_WIDTH;
+            cursor_y++;
 
+            if (cursor_y >= TEXT_MODE_HEIGHT) {
+                shiftCharactersUp();
+                cursor_y = TEXT_MODE_HEIGHT - 1;
+            }
+        }
     } else {
         drawAsciiCharacter(cursor_x, cursor_y, c);
         cursor_x++;

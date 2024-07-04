@@ -32,7 +32,7 @@ add_executable(${PROJECT_NAME}
         font_utils.h
         screen_modes.c
         screen_modes.h
-
+        res/sprites/sprite_defs.c
 )
 
 # by default the header is generated into the build dir

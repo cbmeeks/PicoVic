@@ -5,7 +5,8 @@
 
 typedef enum {
     SCREEN_MODE_0,
-    SCREEN_MODE_1
+    SCREEN_MODE_1,
+    SCREEN_MODE_2,
 } ScreenMode;
 
 
