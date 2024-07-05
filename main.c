@@ -18,6 +18,7 @@
 #include "screen_modes.h"
 #include "pico/stdlib.h"
 #include "res/sprites/sprite_defs.h"
+#include "sprites.h"
 
 
 void endOfFrameCallback(uint64_t frame_counter) {
@@ -28,54 +29,52 @@ int main(void) {
     set_sys_clock_khz(252000, false);
 
     VgaInitParams params = {0};
-    params.scanlineFn = screen_Mode1_Scanline;
+    params.scanlineFn = screen_Mode3_Scanline;
     params.endOfFrameFn = endOfFrameCallback;
 
-    vgaInit(params, getScreenModeParams(SCREEN_MODE_0));
+    ScreenModeParams screenModeParams = getScreenModeParams(SCREEN_MODE_0);
+
+    vgaInit(params, screenModeParams);
     initCharMode();
-    initSprites();
+    initSprites(screenModeParams);
 
-//    setTextCursor(0, 20);
-//    drawCharacterString("320X200 PIXELS...");
-
-//    uint8_t c = 0;
-//    for (int y = 0; y < TEXT_MODE_HEIGHT; y++) {
-//        for (int x = 0; x < TEXT_MODE_WIDTH; x++) {
-//            drawCharacter(x, y, c % 255);
-//            c++;
-//        }
-//    }
-
+    uint16_t x = 0;
     for (int s = 0; s < 20; s++) {
         setSpriteFrame(s, zoomer);
         setSpriteVisible(s, true);
-        setSprite(s, s * 16, 0, 0, (rand() % 4));
+        setSprite(s, x, 0, 0, 1);
         setSpriteHeight(s, 32);
+        setSpriteVisible(s, true);
+        x += 16;
     }
 
+    x = 0;
     for (int s = 20; s < 40; s++) {
         setSpriteFrame(s, zoomer);
         setSpriteVisible(s, true);
-        setSprite(s, s * 16, 64, (rand() % 2), (rand() % 4));
+        setSprite(s, x, 32, 0, 1);
         setSpriteHeight(s, 32);
+        setSpriteVisible(s, true);
+        x += 16;
     }
 
-    setSprite(41, 304, 240 - 32, 0, 0);
-    setSpriteFrame(41, samus);
-    setSpriteVisible(41, true);
-
-    setSprite(42, 0, 0, 0, 0);
-    setSpriteFrame(42, blank);
-    setSpriteVisible(42, true);
+    x = 0;
+    for (int s = 40; s < 60; s++) {
+        setSpriteFrame(s, zoomer);
+        setSpriteVisible(s, true);
+        setSprite(s, x, 64, 0, 1);
+        setSpriteHeight(s, 32);
+        setSpriteVisible(s, true);
+        x += 16;
+    }
 
     setPalette(0, 0x0000);
     setPalette(1, 0x0400);
 
 
-
     while (1) {
         sleep_ms(60);
-        drawCharacterString("ABC\t");
+        drawCharacterString("123\t");
 
         tight_loop_contents();
     }

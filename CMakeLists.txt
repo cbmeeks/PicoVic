@@ -33,6 +33,9 @@ add_executable(${PROJECT_NAME}
         screen_modes.c
         screen_modes.h
         res/sprites/sprite_defs.c
+        res/tiles/tile_defs.c
+        tiles.c
+        sprites.c
 )
 
 # by default the header is generated into the build dir
