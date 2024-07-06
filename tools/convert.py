@@ -13,8 +13,30 @@ def convert_pic(filename):
                 bf.write(r.to_bytes(1, 'little'))
 
 
-def convert_tiles(path, filename):
+def convert_sprites(path, filename):
     with open(path + "/sprites_c.txt", "w") as f:
+        img = Image.open(path + "/" + filename).convert('RGB')
+
+        for y in range(img.height):
+            line = "0b"
+            for x in range(16):
+                r, g, b = img.getpixel((x, y))
+                p = (r, g, b)
+
+                if p == (0, 0, 0):
+                    line = line + "00"
+                elif p == (200, 76, 12):
+                    line = line + "01"
+                elif p == (252, 188, 176):
+                    line = line + "10"
+                elif p == (228, 0, 88):
+                    line = line + "11"
+            f.write(line + ",\n")
+
+
+
+def convert_tiles(path, filename):
+    with open(path + "/tiles_c.txt", "w") as f:
 
         img = Image.open(filename).convert('RGB')
 
@@ -58,9 +80,8 @@ def parse_frame(img_path):
     im = Image.open(img_path).convert('RGB')
     frame = im.crop((0, 0, 16, 16))
 
-    line = "0b"
-
     for y in range(frame.height):
+        line = "0b"
         for x in range(frame.width):
             r, g, b = frame.getpixel((x, y))
             a = (r, g, b)
@@ -75,12 +96,12 @@ def parse_frame(img_path):
                 line = line + str("11")
 
         print(line)
-        line = "0b"
 
     return frame
 
 
-# parse_frame(filename)
+convert_sprites("../res/sprites/", "Samus_No_Suit_32x48.png")
+
 # convert_pic(pic_filename)
 
-convert_tiles("../res/tiles", "../res/tiles/brinstar_16.png")
+# convert_tiles("../res/tiles", "../res/tiles/brinstar_16.png")

@@ -7,7 +7,7 @@
 Sprite sprites[NUMBER_OF_SPRITES] = {};
 SpritePalette sprite_palettes[NUMBER_OF_SPRITE_PALETTES] = {
         {0x0000, 0x00ff, 0x0fa4, 0x00f0},
-        {0x0000, 0x0ff0, 0x04f1, 0x05a5},
+        {0x0000, 0x0e51, 0x0fcb, 0x0e06},
         {0x0000, 0x0444, 0x0fff, 0x0f03},
         {0x0000, 0x0888, 0x0f0f, 0x0f37},
 };
@@ -132,6 +132,12 @@ void setSpriteFrame(uint8_t number, uint32_t *frame) {
 void setSpriteHeight(uint8_t number, uint8_t height) {
     if (number >= NUMBER_OF_SPRITES) return;
     sprites[number].height = height;
+}
+
+void setSpritePalette(uint8_t number, uint8_t palette_number) {
+    if (number >= NUMBER_OF_SPRITES) return;
+    if (palette_number >= NUMBER_OF_SPRITE_PALETTES) palette_number = 0;
+    sprites[number].palette = palette_number;
 }
 
 void setSpriteVisible(uint8_t number, bool visible) {
