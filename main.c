@@ -14,6 +14,7 @@
  */
 
 
+#include <stdlib.h>
 #include "vga.h"
 #include "screen_modes.h"
 #include "pico/stdlib.h"
@@ -46,7 +47,7 @@ int main(void) {
         setSpriteVisible(s, true);
         setSprite(s, x, 0, 0, 1);
         setSpriteHeight(s, 32);
-        setSpriteVisible(s, true);
+        setSpriteVisible(s, false);
         x += 16;
     }
 
@@ -56,7 +57,7 @@ int main(void) {
         setSpriteVisible(s, true);
         setSprite(s, x, 32, 0, 1);
         setSpriteHeight(s, 32);
-        setSpriteVisible(s, true);
+        setSpriteVisible(s, false);
         x += 16;
     }
 
@@ -64,27 +65,27 @@ int main(void) {
     for (int s = 40; s < 60; s++) {
         setSpriteFrame(s, zoomer);
         setSpriteVisible(s, true);
-        setSprite(s, x, 64, 0, 1);
+        setSprite(s, x, 64, 0, 2);
         setSpriteHeight(s, 32);
-        setSpriteVisible(s, true);
+        setSpriteVisible(s, false);
         x += 16;
     }
 
-    setSprite(60, 200, 240 - 16 - 48, 1, 0);
+    setSprite(60, 200, 240 - 16 - 48, 0, 0);
     setSpriteFrame(60, samus);
     setSpriteHeight(60, 48);
     setSpriteVisible(60, true);
     setSpritePalette(60, 1);
 
     setPalette(0, 0x0000);
-    setPalette(1, 0x0820);
+    setPalette(1, 0x0d28);
 
 
     while (1) {
         tight_loop_contents();
 
         sleep_ms(10);
-        drawCharacterString("HELLO, WORLD! ");
+        drawCharacterString("SAMUS ARAN\\");
 
     }
 

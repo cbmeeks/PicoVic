@@ -50,22 +50,6 @@ typedef struct {
 void vgaInit(VgaInitParams params, ScreenModeParams modeParams);
 
 
-// Text Setup
-void initCharMode();
-void initCursor();
-void initPalette();
-void setBGColor(uint8_t x, uint8_t y, uint8_t paletteNumber);
-void setFGColor(uint8_t x, uint8_t y, uint8_t paletteNumber);
-void setPalette(uint8_t paletteNumber, uint16_t color);
-void setTextCursor(uint8_t x, uint8_t y);
-
-// Text Drawing
-void drawCharacter(uint8_t x, uint8_t y, uint8_t character);
-void drawAsciiCharacter(uint8_t x, uint8_t y, uint8_t character);
-void drawCharacterString(char *str);
-void text_write(unsigned char c);
-void shiftCharactersUp();
-
 // Pixels
 void drawPixel(uint16_t x, uint16_t y, uint16_t color);
 void drawVLine(uint16_t x, uint16_t y, uint16_t h, uint16_t color);

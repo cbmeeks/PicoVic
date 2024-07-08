@@ -1,7 +1,8 @@
-#pragma once
+#ifndef __PICOVIC_CHARS_H
+#define __PICOVIC_CHARS_H
 
+#include "font_utils.h"
 #include "bit_helper.h"
-
 
 
 #define TEXT_MODE_WIDTH 40
@@ -30,6 +31,22 @@ extern uint8_t text_bg_clut[];
 extern uint16_t palette_buffer[];
 
 
+// Text Setup
+void initCharMode();
+void initCursor();
+void initPalette();
+void setBGColor(uint8_t x, uint8_t y, uint8_t paletteNumber);
+void setFGColor(uint8_t x, uint8_t y, uint8_t paletteNumber);
+void setPalette(uint8_t paletteNumber, uint16_t color);
+void setTextCursor(uint8_t x, uint8_t y);
 
-
+// Text Drawing
 void drawChars(uint16_t raster_y, uint16_t screenHeight, uint16_t pixels[]);
+void drawCharacter(uint8_t x, uint8_t y, uint8_t character);
+void drawAsciiCharacter(uint8_t x, uint8_t y, uint8_t character);
+void drawCharacterString(char *str);
+void text_write(unsigned char c);
+void shiftCharactersUp();
+
+
+#endif
