@@ -23,6 +23,7 @@ void initSprites(ScreenModeParams modeParams) {
         sprites[s].x_speed = 0;
         sprites[s].y_speed = 0;
         sprites[s].height = 16;
+        sprites[s].width = 16;
         sprites[s].palette = 0;
         sprites[s].visible = false;
     }
@@ -33,7 +34,7 @@ void drawSprites(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y,
         if (sprites[s].visible &&
             raster_y >= sprites[s].y &&
             raster_y < (sprites[s].y + sprites[s].height) &&
-            raster_y < screenModeParams.vga_virtual_pixel_height) {
+            raster_y < screenHeight) {
 
             int offset = (raster_y - sprites[s].y);
             uint32_t line = sprites[s].frame[offset];

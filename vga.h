@@ -17,13 +17,10 @@
 
 #include <inttypes.h>
 #include "screen_modes.h"
+#include "chars.h"
 
 #define VGA_VIRTUAL_WIDTH  320
 #define VGA_VIRTUAL_HEIGHT 240
-
-#define TEXT_MODE_WIDTH 40
-#define TEXT_MODE_HEIGHT 30
-#define TAB_SPACES 4
 
 
 extern uint16_t palette_buffer[];

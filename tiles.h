@@ -11,6 +11,7 @@ typedef struct {
     uint16_t color[4];
 } TilePalette;
 
+extern uint16_t map_x;
 
 // Map is in Y x X format (height x width)
 extern uint8_t map[15][20];
@@ -18,4 +19,6 @@ extern uint8_t map[15][20];
 // Each tile position within the map can have it's own palette number.
 extern uint8_t map_tile_palettes[15][20];
 
+void initMap();
+void updateMap();
 void drawMap(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]);

@@ -24,7 +24,6 @@
 #include "hardware/pio.h"
 #include "hardware/clocks.h"
 
-#include "res/fonts/petscii/petscii.h"
 #include "bit_helper.h"
 #include "font_utils.h"
 #include "screen_modes.h"
@@ -73,28 +72,6 @@ uint16_t __aligned(4) rgbDataBufferOdd[VGA_VIRTUAL_WIDTH];
  */
 #define PIXELCOUNT (VGA_VIRTUAL_WIDTH * VGA_VIRTUAL_HEIGHT)
 uint16_t __aligned(4) frame_buffer[VGA_VIRTUAL_WIDTH * VGA_VIRTUAL_HEIGHT];
-
-/**
- * PALETTE BUFFER
- */
-#define PALETTECOUNT 256
-uint16_t palette_buffer[PALETTECOUNT];
-
-
-/**
- * TEXT BUFFER
- * Character buffer used to hold text and other characters.
- * Similar to the $0400 location on a Commodore 64.
- */
-#define TEXT_MODE_COUNT (TEXT_MODE_WIDTH * TEXT_MODE_HEIGHT)
-#define BLANK_CHAR 32
-#define CHAR_WIDTH 8
-#define CHAR_HEIGHT 8
-
-uint8_t cursor_x, cursor_y;
-uint8_t text_buffer[TEXT_MODE_COUNT];
-uint8_t text_fg_clut[TEXT_MODE_COUNT];
-uint8_t text_bg_clut[TEXT_MODE_COUNT];
 
 
 /*
@@ -361,61 +338,15 @@ void vgaInit(VgaInitParams params, ScreenModeParams modeParams) {
 
 
 void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
-    // Draw chars
-    if (raster_y >= 0 && raster_y < VGA_VIRTUAL_HEIGHT) {
-        // Grab row index based off current raster Y position
-        uint8_t rowIdx = raster_y / CHAR_HEIGHT;
-        uint8_t lineIdx = raster_y % 8;
-
-        for (uint16_t colIdx = 0; colIdx < (TEXT_MODE_WIDTH * CHAR_WIDTH); colIdx += CHAR_WIDTH) {
-            uint8_t charIdx = colIdx / CHAR_WIDTH;
-            uint16_t bufferIdx = rowIdx * TEXT_MODE_WIDTH + charIdx;
-            uint8_t character = text_buffer[bufferIdx];
-            unsigned char line = petscii[character][lineIdx];
-            uint16_t fgcolor = palette_buffer[text_fg_clut[bufferIdx]];
-            uint16_t bgcolor = palette_buffer[text_bg_clut[bufferIdx]];
-
-            pixels[colIdx + 0] = CHECK_BIT(line, (7 - 0)) ? fgcolor : bgcolor;
-            pixels[colIdx + 1] = CHECK_BIT(line, (7 - 1)) ? fgcolor : bgcolor;
-            pixels[colIdx + 2] = CHECK_BIT(line, (7 - 2)) ? fgcolor : bgcolor;
-            pixels[colIdx + 3] = CHECK_BIT(line, (7 - 3)) ? fgcolor : bgcolor;
-            pixels[colIdx + 4] = CHECK_BIT(line, (7 - 4)) ? fgcolor : bgcolor;
-            pixels[colIdx + 5] = CHECK_BIT(line, (7 - 5)) ? fgcolor : bgcolor;
-            pixels[colIdx + 6] = CHECK_BIT(line, (7 - 6)) ? fgcolor : bgcolor;
-            pixels[colIdx + 7] = CHECK_BIT(line, (7 - 7)) ? fgcolor : bgcolor;
-        }
-    }
+    uint16_t screenHeight = screenModeParams.vga_virtual_pixel_height;
+    drawChars(raster_y, screenHeight, pixels);
 }
 
 void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
     uint16_t screenWidth = screenModeParams.vga_virtual_pixel_width;
     uint16_t screenHeight = screenModeParams.vga_virtual_pixel_height;
 
-    // Draw chars
-    if (raster_y >= 0 && raster_y < screenModeParams.vga_virtual_pixel_height) {
-        // Grab row index based off current raster Y position
-        uint8_t rowIdx = raster_y / CHAR_HEIGHT;
-        uint8_t lineIdx = raster_y % 8;
-
-        for (uint16_t colIdx = 0; colIdx < (TEXT_MODE_WIDTH * CHAR_WIDTH); colIdx += CHAR_WIDTH) {
-            uint8_t charIdx = colIdx / CHAR_WIDTH;
-            uint16_t bufferIdx = rowIdx * TEXT_MODE_WIDTH + charIdx;
-            uint8_t character = text_buffer[bufferIdx];
-            unsigned char line = petscii[character][lineIdx];
-            uint16_t fgcolor = palette_buffer[text_fg_clut[bufferIdx]];
-            uint16_t bgcolor = palette_buffer[text_bg_clut[bufferIdx]];
-
-            pixels[colIdx + 0] = CHECK_BIT(line, (7 - 0)) ? fgcolor : bgcolor;
-            pixels[colIdx + 1] = CHECK_BIT(line, (7 - 1)) ? fgcolor : bgcolor;
-            pixels[colIdx + 2] = CHECK_BIT(line, (7 - 2)) ? fgcolor : bgcolor;
-            pixels[colIdx + 3] = CHECK_BIT(line, (7 - 3)) ? fgcolor : bgcolor;
-            pixels[colIdx + 4] = CHECK_BIT(line, (7 - 4)) ? fgcolor : bgcolor;
-            pixels[colIdx + 5] = CHECK_BIT(line, (7 - 5)) ? fgcolor : bgcolor;
-            pixels[colIdx + 6] = CHECK_BIT(line, (7 - 6)) ? fgcolor : bgcolor;
-            pixels[colIdx + 7] = CHECK_BIT(line, (7 - 7)) ? fgcolor : bgcolor;
-        }
-    }
-
+    drawChars(raster_y, screenHeight, pixels);
     drawSprites(screenWidth, screenHeight, raster_y, pixels);
 
     // About 60 fps
@@ -437,6 +368,7 @@ void screen_Mode3_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.v
 
     // About 60 fps
     if (raster_y == screenModeParams.vga_virtual_pixel_height - 1) {
+        updateMap();
         updateSprites();
     }
 }

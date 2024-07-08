@@ -1,6 +1,7 @@
 #ifndef PETSCII_H
 #define PETSCII_H
 
+
 // THIS FILE IS GENERATED WITH THE petscii.py PROGRAM!
 
 // DO NOT HAND EDIT!

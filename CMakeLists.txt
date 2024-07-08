@@ -32,10 +32,12 @@ add_executable(${PROJECT_NAME}
         font_utils.h
         screen_modes.c
         screen_modes.h
-        res/sprites/sprite_defs.c
-        res/tiles/tile_defs.c
         tiles.c
         sprites.c
+        res/sprites/sprite_defs.c
+        res/tiles/tile_defs.c
+        res/fonts/ti994a_fonts.h
+        chars.c
 )
 
 # by default the header is generated into the build dir

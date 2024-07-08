@@ -14,6 +14,7 @@ typedef struct {
     uint8_t y;
     uint32_t *frame;
     uint8_t height;
+    uint8_t width;
     uint8_t x_speed;
     uint8_t y_speed;
     uint8_t palette;

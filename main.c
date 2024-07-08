@@ -13,11 +13,12 @@
  *
  */
 
-#include <stdlib.h>
+
 #include "vga.h"
 #include "screen_modes.h"
 #include "pico/stdlib.h"
 #include "res/sprites/sprite_defs.h"
+#include "tiles.h"
 #include "sprites.h"
 
 
@@ -36,6 +37,7 @@ int main(void) {
 
     vgaInit(params, screenModeParams);
     initCharMode();
+    initMap();
     initSprites(screenModeParams);
 
     uint16_t x = 0;
@@ -68,21 +70,22 @@ int main(void) {
         x += 16;
     }
 
-    setSprite(60, 200, 240 - 16 - 48, 0, 0);
+    setSprite(60, 200, 240 - 16 - 48, 1, 0);
     setSpriteFrame(60, samus);
     setSpriteHeight(60, 48);
     setSpriteVisible(60, true);
     setSpritePalette(60, 1);
 
     setPalette(0, 0x0000);
-    setPalette(1, 0x0400);
+    setPalette(1, 0x0820);
 
 
     while (1) {
-        sleep_ms(60);
-        drawCharacterString("123\t");
-
         tight_loop_contents();
+
+        sleep_ms(10);
+        drawCharacterString("HELLO, WORLD! ");
+
     }
 
     return 0;
