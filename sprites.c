@@ -19,7 +19,7 @@ void initSprites(ScreenModeParams modeParams) {
     for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
         sprites[s].x = 0;
         sprites[s].y = 0;
-        sprites[s].frame = blank;
+        sprites[s].frame = blank16x16;
         sprites[s].x_speed = 0;
         sprites[s].y_speed = 0;
         sprites[s].height = 16;
@@ -35,7 +35,6 @@ void drawSprites(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y,
             raster_y >= sprites[s].y &&
             raster_y < (sprites[s].y + sprites[s].height) &&
             raster_y < screenHeight) {
-
             int offset = (raster_y - sprites[s].y);
             uint32_t line = sprites[s].frame[offset];
 
@@ -54,7 +53,7 @@ void drawSprites(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y,
             uint8_t cc = ((line & 0b00000000000000000000000011000000) >> 6);
             uint8_t cd = ((line & 0b00000000000000000000000000110000) >> 4);
             uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
-            uint8_t cf = ((line & 0b00000000000000000000000000000011) >> 0);
+            uint8_t cf = ((line & 0b00000000000000000000000000000011));
 
             if (c0 != 0 && sprites[s].x + 0 >= 0 && sprites[s].x + 0 < screenWidth)
                 pixels[sprites[s].x + 0] = sprite_palettes[sprites[s].palette].color[c0];
@@ -126,22 +125,23 @@ void setSprite(uint8_t number, uint16_t x, uint8_t y, uint8_t x_speed, uint8_t y
 }
 
 void setSpriteFrame(uint8_t number, uint32_t *frame) {
-    if (number >= NUMBER_OF_SPRITES) return;
+    if (number < 0 || number >= NUMBER_OF_SPRITES) return;
     sprites[number].frame = frame;
 }
 
-void setSpriteHeight(uint8_t number, uint8_t height) {
-    if (number >= NUMBER_OF_SPRITES) return;
+void setSpriteSize(uint8_t number, uint8_t width, uint8_t height) {
+    if (number < 0 || number >= NUMBER_OF_SPRITES) return;
+    sprites[number].width = width;
     sprites[number].height = height;
 }
 
 void setSpritePalette(uint8_t number, uint8_t palette_number) {
-    if (number >= NUMBER_OF_SPRITES) return;
+    if (number < 0 || number >= NUMBER_OF_SPRITES) return;
     if (palette_number >= NUMBER_OF_SPRITE_PALETTES) palette_number = 0;
     sprites[number].palette = palette_number;
 }
 
 void setSpriteVisible(uint8_t number, bool visible) {
-    if (number >= NUMBER_OF_SPRITES) return;
+    if (number < 0 || number >= NUMBER_OF_SPRITES) return;
     sprites[number].visible = visible;
 }

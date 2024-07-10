@@ -104,6 +104,15 @@ void initMap() {
     map_x = 0;
 }
 
+void setTilePalette(uint8_t number, uint16_t color0, uint16_t color1, uint16_t color2, uint16_t color3) {
+    if (number < 0 || number >= NUMBER_OF_TILE_PALETTES) return;
+    tile_palettes[number].color[0] = color0;
+    tile_palettes[number].color[1] = color1;
+    tile_palettes[number].color[2] = color2;
+    tile_palettes[number].color[3] = color3;
+}
+
+
 void updateMap() {
 //    map_x++;
 //    if (map_x > 320) map_x = 0;

@@ -42,38 +42,37 @@ int main(void) {
     initSprites(screenModeParams);
 
     uint16_t x = 0;
-    for (int s = 0; s < 20; s++) {
-        setSpriteFrame(s, zoomer);
+    uint8_t y = 0;
+    for (int s = 0; s < 16; s++) {
+        setSpriteFrame(s, blank16x16);
+        setSprite(s, x, y, 0, 0);
+        setSpriteSize(s, 16, 16);
         setSpriteVisible(s, true);
-        setSprite(s, x, 0, 0, 1);
-        setSpriteHeight(s, 32);
-        setSpriteVisible(s, false);
-        x += 16;
+        x += 20;
+        y += 0;
     }
 
     x = 0;
     for (int s = 20; s < 40; s++) {
         setSpriteFrame(s, zoomer);
+        setSprite(s, x, 32, 0, 0);
+        setSpriteSize(s, 16, 16);
         setSpriteVisible(s, true);
-        setSprite(s, x, 32, 0, 1);
-        setSpriteHeight(s, 32);
-        setSpriteVisible(s, false);
         x += 16;
     }
 
     x = 0;
     for (int s = 40; s < 60; s++) {
         setSpriteFrame(s, zoomer);
+        setSprite(s, x, 64, 0, 0);
+        setSpriteSize(s, 16, 16);
         setSpriteVisible(s, true);
-        setSprite(s, x, 64, 0, 2);
-        setSpriteHeight(s, 32);
-        setSpriteVisible(s, false);
         x += 16;
     }
 
     setSprite(60, 200, 240 - 16 - 48, 0, 0);
     setSpriteFrame(60, samus);
-    setSpriteHeight(60, 48);
+    setSpriteSize(60, 16, 48);
     setSpriteVisible(60, true);
     setSpritePalette(60, 1);
 
@@ -84,7 +83,6 @@ int main(void) {
     while (1) {
         tight_loop_contents();
 
-        sleep_ms(10);
         drawCharacterString("SAMUS ARAN\\");
 
     }

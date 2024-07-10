@@ -22,3 +22,5 @@ extern uint8_t map_tile_palettes[15][20];
 void initMap();
 void updateMap();
 void drawMap(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]);
+
+void setTilePalette(uint8_t number, uint16_t color0, uint16_t color1, uint16_t color2, uint16_t color3);

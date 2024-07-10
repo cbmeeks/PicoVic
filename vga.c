@@ -1,3 +1,4 @@
+#include <sys/cdefs.h>
 /*
  * Project: PicoVic - vga
  *
@@ -297,7 +298,7 @@ static void initDma() {
  * Main VGA Loop
  * Will execute "end of frame" and "end of line" callbacks if they are available.
  */
-static void vgaLoop() {
+_Noreturn static void vgaLoop() {
     uint64_t frame_counter = 0;
 
     while (1) {
