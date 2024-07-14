@@ -21,6 +21,8 @@
 
 #define VGA_VIRTUAL_WIDTH  320
 #define VGA_VIRTUAL_HEIGHT 240
+#define BUFFER_START_OFFSET 16
+#define BUFFER_PADDING (VGA_VIRTUAL_WIDTH)
 
 extern void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
 extern void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);

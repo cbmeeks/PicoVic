@@ -2,6 +2,7 @@
 
 #include <memory.h>
 #include "tiles.h"
+#include "vga.h"
 
 static TilePalette tile_palettes[NUMBER_OF_TILE_PALETTES] = {
         {0x0000, 0x009a, 0x042f, 0x08ef},
@@ -51,8 +52,7 @@ uint8_t map_tile_palettes[15][20] = {
 };
 
 
-void drawMap(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
-
+void drawMap(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth + BUFFER_PADDING]) {
     if (raster_y >= 0 && raster_y < screenHeight) {
         uint8_t row = (raster_y / TILE_HEIGHT);
 
@@ -80,22 +80,25 @@ void drawMap(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uin
             uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
             uint8_t cf = ((line & 0b00000000000000000000000000000011) >> 0);
 
-            pixels[raster_x + 0] = tile_palettes[tilePalette].color[c0];
-            pixels[raster_x + 1] = tile_palettes[tilePalette].color[c1];
-            pixels[raster_x + 2] = tile_palettes[tilePalette].color[c2];
-            pixels[raster_x + 3] = tile_palettes[tilePalette].color[c3];
-            pixels[raster_x + 4] = tile_palettes[tilePalette].color[c4];
-            pixels[raster_x + 5] = tile_palettes[tilePalette].color[c5];
-            pixels[raster_x + 6] = tile_palettes[tilePalette].color[c6];
-            pixels[raster_x + 7] = tile_palettes[tilePalette].color[c7];
-            pixels[raster_x + 8] = tile_palettes[tilePalette].color[c8];
-            pixels[raster_x + 9] = tile_palettes[tilePalette].color[c9];
-            pixels[raster_x + 10] = tile_palettes[tilePalette].color[ca];
-            pixels[raster_x + 11] = tile_palettes[tilePalette].color[cb];
-            pixels[raster_x + 12] = tile_palettes[tilePalette].color[cc];
-            pixels[raster_x + 13] = tile_palettes[tilePalette].color[cd];
-            pixels[raster_x + 14] = tile_palettes[tilePalette].color[ce];
-            pixels[raster_x + 15] = tile_palettes[tilePalette].color[cf];
+            // The pixel buffer is shifted to the left by 16 pixels.
+            // This allows sprites to enter from the left without "instantly appearing".
+            // This also means that tile x position 0 is invisible.  So we need to add 16 to move it back over
+            pixels[raster_x + 16] = tile_palettes[tilePalette].color[c0];
+            pixels[raster_x + 17] = tile_palettes[tilePalette].color[c1];
+            pixels[raster_x + 18] = tile_palettes[tilePalette].color[c2];
+            pixels[raster_x + 19] = tile_palettes[tilePalette].color[c3];
+            pixels[raster_x + 20] = tile_palettes[tilePalette].color[c4];
+            pixels[raster_x + 21] = tile_palettes[tilePalette].color[c5];
+            pixels[raster_x + 22] = tile_palettes[tilePalette].color[c6];
+            pixels[raster_x + 23] = tile_palettes[tilePalette].color[c7];
+            pixels[raster_x + 24] = tile_palettes[tilePalette].color[c8];
+            pixels[raster_x + 25] = tile_palettes[tilePalette].color[c9];
+            pixels[raster_x + 26] = tile_palettes[tilePalette].color[ca];
+            pixels[raster_x + 27] = tile_palettes[tilePalette].color[cb];
+            pixels[raster_x + 28] = tile_palettes[tilePalette].color[cc];
+            pixels[raster_x + 29] = tile_palettes[tilePalette].color[cd];
+            pixels[raster_x + 30] = tile_palettes[tilePalette].color[ce];
+            pixels[raster_x + 31] = tile_palettes[tilePalette].color[cf];
         }
     }
 }

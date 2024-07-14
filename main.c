@@ -41,40 +41,54 @@ int main(void) {
     initMap();
     initSprites(screenModeParams);
 
-    uint16_t x = 0;
-    uint8_t y = 0;
-    for (int s = 0; s < 16; s++) {
-        setSpriteFrame(s, blank16x16);
+    uint8_t sprites_per_scanline = 12;
+
+    int p = 0;
+    uint16_t x = 16;
+    uint8_t y = 16;
+    for (int s = 0; s < sprites_per_scanline; s++) {
+        setSpriteFrame(s, zoomer);
         setSprite(s, x, y, 0, 0);
         setSpriteSize(s, 16, 16);
         setSpriteVisible(s, true);
-        x += 20;
-        y += 0;
-    }
-
-    x = 0;
-    for (int s = 20; s < 40; s++) {
-        setSpriteFrame(s, zoomer);
-        setSprite(s, x, 32, 0, 0);
-        setSpriteSize(s, 16, 16);
-        setSpriteVisible(s, true);
+        setSpritePalette(s, (p++) % 4);
         x += 16;
     }
 
-    x = 0;
-    for (int s = 40; s < 60; s++) {
-        setSpriteFrame(s, zoomer);
-        setSprite(s, x, 64, 0, 0);
+    x = 16;
+    y += 20;
+    for (int s = 16; s < 16 + sprites_per_scanline; s++) {
+        setSpriteFrame(s, blank16x16);
+        setSprite(s, x, y, 1, 0);
         setSpriteSize(s, 16, 16);
         setSpriteVisible(s, true);
+        setSpritePalette(s, (p++) % 4);
         x += 16;
     }
 
-    setSprite(60, 200, 240 - 16 - 48, 0, 0);
-    setSpriteFrame(60, samus);
-    setSpriteSize(60, 16, 48);
-    setSpriteVisible(60, true);
-    setSpritePalette(60, 1);
+    x = 16;
+    y += 60;
+    for (int s = 32; s < 32 + sprites_per_scanline; s++) {
+        setSpriteFrame(s, samus);
+        setSprite(s, x, y, -1, 0);
+        setSpriteSize(s, 16, 48);
+        setSpriteVisible(s, true);
+        setSpritePalette(s, (p++) % 4);
+        x += 16;
+    }
+
+    x = 112;
+    y += 20;
+    for (int s = 48; s < 48 + sprites_per_scanline; s++) {
+        setSpriteFrame(s, samus);
+        setSprite(s, x, 240 - 16 - 48, 0, 0);
+        setSpriteSize(s, 16, 48);
+        setSpriteVisible(s, true);
+        setSpritePalette(s, (p++) % 4);
+        x += 16;
+    }
+    setSpritePosition(52, 11*16, 240 - 16 - 48 - 32);
+
 
     setPalette(0, 0x0000);
     setPalette(1, 0x0d28);
@@ -83,7 +97,7 @@ int main(void) {
     while (1) {
         tight_loop_contents();
 
-        drawCharacterString("SAMUS ARAN\\");
+//        drawCharacterString("SAMUS ARAN\\");
 
     }
 
