@@ -11,6 +11,8 @@ SpritePalette sprite_palettes[NUMBER_OF_SPRITE_PALETTES] = {
         {0x0000, 0x0e51, 0x0fcb, 0x0e06},
         {0x0000, 0x0444, 0x0fff, 0x0f03},
         {0x0000, 0x0e06, 0x0fcb, 0x0444},
+        {0x0000, 0x09fe, 0x0f93, 0x04d4},       // zoomer
+        {0x0000, 0x0c41, 0x0fba, 0x0d05},       // Samus no suit
 };
 
 static ScreenModeParams screenModeParams;
@@ -86,6 +88,9 @@ void updateSprites() {
 
         if (sprites[s].x < 0) sprites[s].x = screenModeParams.vga_virtual_pixel_width + (BUFFER_PADDING - 32 - 1);
         if (sprites[s].x > screenModeParams.vga_virtual_pixel_width + (BUFFER_PADDING - 32)) sprites[s].x = 0;
+
+        if (sprites[s].y < 0 - sprites[s].height) sprites[s].y = screenModeParams.vga_virtual_pixel_height;
+        if (sprites[s].y > screenModeParams.vga_virtual_pixel_height) sprites[s].y = 0 - sprites[s].height;
     }
 }
 
@@ -123,7 +128,6 @@ void setSpritePosition(uint8_t number, int x, int y) {
     sprites[number].y = y;
     if (sprites[number].x < 0) sprites[number].x = screenModeParams.vga_virtual_pixel_width + (BUFFER_PADDING - 32 - 1);
     if (sprites[number].x > screenModeParams.vga_virtual_pixel_width + (BUFFER_PADDING - 32)) sprites[number].x = 0;
-
 }
 
 void setSpriteVisible(uint8_t number, bool visible) {

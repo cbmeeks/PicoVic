@@ -56,8 +56,8 @@ uint32_t __aligned(4) syncDataActive[4];  // active display area
 uint32_t __aligned(4) syncDataPorch[4];   // vertical porch
 uint32_t __aligned(4) syncDataSync[4];    // vertical sync
 
-uint16_t __aligned(4) rgbDataBufferEven[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
-uint16_t __aligned(4) rgbDataBufferOdd[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
+uint16_t __aligned(4) rgbDataBufferA[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
+uint16_t __aligned(4) rgbDataBufferB[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
 
 
 #define SYNC_LINE_ACTIVE 0
@@ -230,9 +230,13 @@ static void vgaInitRgb(void) {
     channel_config_set_dreq(&rgbDmaChanConfig, pio_get_dreq(VGA_PIO, RGB_SM, true));
 
     // setup the dma channel and set it going
-    dma_channel_configure(rgbDmaChan, &rgbDmaChanConfig, &VGA_PIO->txf[RGB_SM], rgbDataBufferEven,
+    dma_channel_configure(rgbDmaChan,
+                          &rgbDmaChanConfig,
+                          &VGA_PIO->txf[RGB_SM],
+                          rgbDataBufferA,
                           screenModeParams.vga_virtual_pixel_width,
-                          false);
+                          false
+    );
     dma_channel_set_irq0_enabled(rgbDmaChan, true);
 }
 
@@ -272,9 +276,10 @@ static void __time_critical_func(dmaIrqHandler)(void) {
         uint32_t pxLineRpt = to_remainder_u32(pxLineVal);
 
         dma_channel_set_read_addr(rgbDmaChan, (pxLine & 1) ?
-                                              rgbDataBufferOdd + BUFFER_START_OFFSET :
-                                              rgbDataBufferEven + BUFFER_START_OFFSET, true
+                                              rgbDataBufferB + BUFFER_START_OFFSET :
+                                              rgbDataBufferA + BUFFER_START_OFFSET, true
         );
+
 
         // need a new line every X display lines
         if (pxLineRpt == 0) {
@@ -315,9 +320,9 @@ _Noreturn static void vgaLoop() {
             if (vgaParams.endOfScanlineFn)
                 vgaParams.endOfScanlineFn();
         } else if (message & 0x01) {
-            vgaParams.scanlineFn(message & 0xfff, rgbDataBufferOdd);
+            vgaParams.scanlineFn(message & 0xfff, rgbDataBufferB);
         } else {
-            vgaParams.scanlineFn(message & 0xfff, rgbDataBufferEven);
+            vgaParams.scanlineFn(message & 0xfff, rgbDataBufferA);
         }
     }
 }
