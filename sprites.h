@@ -25,10 +25,8 @@ typedef struct {
     uint16_t color[4];
 } SpritePalette;
 
-extern Sprite sprites[];
-extern SpritePalette sprite_palettes[];
 
-void initSprites(ScreenModeParams modeParams);
+void initSprites(VgaParams modeParams);
 void drawSprites(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]);
 
 void updateSprites();
@@ -38,3 +36,4 @@ void setSpritePalette(uint8_t number, uint8_t palette_number);
 void setSpritePosition(uint8_t number, int x, int y);
 void setSpriteVisible(uint8_t number, bool visible);
 void setSpriteSize(uint8_t number, uint8_t width, uint8_t height);
+void setSpriteSpeed(uint8_t number, int x_speed, int y_speed);

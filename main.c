@@ -18,10 +18,9 @@
 #include "vga.h"
 #include "screen_modes.h"
 #include "pico/stdlib.h"
-#include "res/sprites/sprite_defs.h"
-#include "tiles.h"
-#include "sprites.h"
 
+#include "sprites.h"
+#include "../res/sprites/sprite_defs.h"
 
 void endOfFrameCallback(uint64_t frame_counter) {
 //    drawCharacterString("*");
@@ -30,83 +29,45 @@ void endOfFrameCallback(uint64_t frame_counter) {
 int main(void) {
     set_sys_clock_khz(252000, false);
 
-    VgaInitParams params = {0};
-    params.scanlineFn = screen_Mode3_Scanline;
-    params.endOfFrameFn = endOfFrameCallback;
+    VgaInitParams vgaInitParams = {0};
+    vgaInitParams.scanlineFn = scanline_map_sprites;
+    vgaInitParams.endOfFrameFn = endOfFrameCallback;
 
-    ScreenModeParams screenModeParams = getScreenModeParams(SCREEN_MODE_0);
+    VgaParams vgaParams = getScreenModeParams(VGA_640x480_60Hz);
 
-    vgaInit(params, screenModeParams);
-    initCharMode();
-    initMap();
-    initSprites(screenModeParams);
+    vgaInit(vgaInitParams, vgaParams);
+    initSprites(vgaParams);
 
-    uint8_t sprites_per_scanline = 12;
 
-    int p = 0;
-    uint16_t x = 16;
-    uint8_t y = 16;
-    for (int s = 0; s < sprites_per_scanline - 1; s++) {
-        setSpriteFrame(s, zoomer);
-        setSprite(s, x, y, 0, 0);
-        setSpriteSize(s, 16, 16);
-        setSpriteVisible(s, true);
-        setSpritePalette(s, 4);
-        x += 16;
+    int sprites_per_scanline = 16;
+    for (int i = 0; i < sprites_per_scanline; i++) {
+        setSprite(i, 32 + (i * 16), 64, 0, 0);
+        setSpriteFrame(i, zoomer);
+        setSpriteSize(i, 16, 16);
+        setSpriteVisible(i, true);
+        setSpritePalette(i, i % 4);
     }
+//    setSpriteFrame(11, samus);
+//    setSpriteSize(11, 16, 48);
+//    setSpriteSpeed(11, 1, 0);
 
-    x = 16;
-    y += 20;
-    for (int s = 16; s < 16 + sprites_per_scanline - 1; s++) {
-        setSpriteFrame(s, blank16x16);
-        setSprite(s, x, y, 1, 0);
-        setSpriteSize(s, 16, 16);
-        setSpriteVisible(s, true);
-        setSpritePalette(s, 4);
-        x += 16;
-    }
+//    setSpriteFrame(1, samus);
+//    setSpriteSize(1, 16, 48);
+//    setSpriteFrame(3, samus);
+//    setSpriteSize(3, 16, 48);
+//    setSpriteFrame(5, samus);
+//    setSpriteSize(5, 16, 48);
+//    setSpriteFrame(7, samus);
+//    setSpriteSize(7, 16, 48);
+//    setSpriteFrame(10, samus);
+//    setSpriteSize(10, 16, 48);
 
-    x = 16;
-    y += 60;
-    for (int s = 32; s < 32 + sprites_per_scanline - 1; s++) {
-        setSpriteFrame(s, skrees[0]);
-        setSprite(s, x, y, -1, 0);
-        setSpriteSize(s, 16, 24);
-        setSpriteVisible(s, true);
-        setSpritePalette(s, 4);
-        x += 16;
-    }
-
-    setSprite(32, 160, 0, 0, 2);
-
-
-    x = 112;
-    y += 20;
-    for (int s = 48; s < 48 + sprites_per_scanline - 1; s++) {
-        setSpriteFrame(s, samus);
-        setSprite(s, x, 240 - 16 - 48, 0, 0);
-        setSpriteSize(s, 16, 48);
-        setSpriteVisible(s, true);
-        setSpritePalette(s, 5);
-        x += 16;
-    }
-    setSpritePosition(52, 11 * 16, 240 - 16 - 48 - 32);
-
-
-    setPalette(0, 0x0000);
-    setPalette(1, 0x0d28);
-
-
-    uint8_t frame = 0;
+    uint16_t color = 0;
     while (1) {
         tight_loop_contents();
 
-        sleep_ms(100);
-        setSpriteFrame(32, skrees[frame++]);
-        if (frame >= 3) frame = 0;
-
-//        drawCharacterString("SAMUS ARAN\\");
-
+//        fillRect(rand() % 320, rand() % 240, rand() % 64, rand() % 64, rand() % 4096);
+//        sleep_ms(8);
     }
 
     return 0;

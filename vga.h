@@ -21,13 +21,13 @@
 
 #define VGA_VIRTUAL_WIDTH  320
 #define VGA_VIRTUAL_HEIGHT 240
-#define BUFFER_START_OFFSET 16
-#define BUFFER_PADDING (VGA_VIRTUAL_WIDTH)
 
-extern void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
-extern void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
-extern void screen_Mode2_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
-extern void screen_Mode3_Scanline(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
+#define swap(a, b) { short t = a; a = b; b = t; }
+
+extern void scanline_chars(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
+extern void scanline_chars_sprites(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
+extern void scanline_bitmap_sprites(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
+extern void scanline_map_sprites(uint16_t raster_y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
 
 typedef void (*vgaScanlineFn)(uint16_t y, uint16_t pixels[VGA_VIRTUAL_WIDTH]);
 typedef void (*vgaEndOfFrameFn)(uint64_t frame_counter);
@@ -40,14 +40,17 @@ typedef struct {
 } VgaInitParams;
 
 
-
 // Setup
-void vgaInit(VgaInitParams params, ScreenModeParams modeParams);
-
+void vgaInit(VgaInitParams params, VgaParams modeParams);
 
 // Pixels
 void drawPixel(uint16_t x, uint16_t y, uint16_t color);
 void drawVLine(uint16_t x, uint16_t y, uint16_t h, uint16_t color);
 void drawHLine(uint16_t x, uint16_t y, uint16_t w, uint16_t color);
-
+void drawLine(short x0, short y0, short x1, short y1, uint16_t color);
+void drawRect(short x, short y, short w, short h, uint16_t color);
+void drawRectCenter(short x, short y, short w, short h, uint16_t color);
+void drawCircle(short x0, short y0, short r, uint16_t color);
+void fillCircle(short x0, short y0, short r, uint16_t color);
+void fillRect(short x, short y, short w, short h, uint16_t color);
 

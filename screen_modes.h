@@ -4,9 +4,7 @@
 #pragma once
 
 typedef enum {
-    SCREEN_MODE_0,
-    SCREEN_MODE_1,
-    SCREEN_MODE_2,
+    VGA_640x480_60Hz,
 } ScreenMode;
 
 
@@ -34,6 +32,6 @@ typedef struct {
     uint16_t back_porch_y_pixels;       // Number of vertical pixels in the back porch
     float pixel_scale_y;                // (ACTIVE_PIXELS_Y / VGA_VIRTUAL_HEIGHT)
     uint16_t total_y_pixels;            // (ACTIVE_PIXELS_Y + FPORCH_PIXELS_Y + VSYNC_PIXELS_Y + BPORCH_PIXELS_Y)
-} ScreenModeParams;
+} VgaParams;
 
-ScreenModeParams getScreenModeParams(ScreenMode mode);
+VgaParams getScreenModeParams(ScreenMode mode);

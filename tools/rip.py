@@ -44,4 +44,5 @@ def rip(filename):
         print(out)
 
 
-rip("../res/sprites/Skree-16x24.png")
+# rip("../res/sprites/Skree-16x24.png")
+rip("../res/sprites/Side_Hopper_32x24.png")

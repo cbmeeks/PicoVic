@@ -1,8 +1,8 @@
 
-
-#include <memory.h>
 #include "tiles.h"
 #include "vga.h"
+
+#define __no_inline_not_in_flash_func(func) func
 
 static TilePalette tile_palettes[NUMBER_OF_TILE_PALETTES] = {
         {0x0000, 0x009a, 0x042f, 0x08ef},
@@ -11,101 +11,95 @@ static TilePalette tile_palettes[NUMBER_OF_TILE_PALETTES] = {
         {0x0000, 0x0888, 0x0f0f, 0x0f37},
 };
 
-uint16_t map_x = 0;
 
-
-// Map array
-uint8_t map[15][20] = {
-        {0x01, 0x01, 0x03, 0x03, 0x01, 0x05, 0x01, 0x01, 0x03, 0x01, 0x03, 0x01, 0x01, 0x01, 0x03, 0x01, 0x03, 0x01, 0x01, 0x01,},
-        {0x01, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x10,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,},
-        {0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x05, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x00, 0x00, 0x02, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,},
-        {0x01, 0x01, 0x02, 0x02, 0x03, 0x01, 0x01, 0x01, 0x01, 0x05, 0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01,},
+// Map array (20x15)
+uint8_t map[300] = {
+        0x01, 0x01, 0x03, 0x03, 0x01, 0x05, 0x01, 0x01, 0x03, 0x01, 0x03, 0x01, 0x01, 0x01, 0x03, 0x01, 0x03, 0x01, 0x01, 0x01,
+        0x01, 0x11, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x03, 0x10,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x05,
+        0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x05, 0x00, 0x00, 0x00, 0x00, 0x05, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x00, 0x00, 0x04, 0x00, 0x00, 0x00, 0x00, 0x06, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x00, 0x00, 0x02, 0x02, 0x03, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x01,
+        0x01, 0x01, 0x02, 0x02, 0x03, 0x01, 0x01, 0x01, 0x01, 0x05, 0x05, 0x01, 0x01, 0x01, 0x01, 0x01, 0x05, 0x01, 0x01, 0x01,
 };
 
-uint8_t map_tile_palettes[15][20] = {
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0},
-        {3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3},
+uint8_t map_tile_palettes[300] = {
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        2, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
+        3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3,
 };
 
 
-void drawMap(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth + BUFFER_PADDING]) {
-    if (raster_y >= 0 && raster_y < screenHeight) {
-        uint8_t row = (raster_y / TILE_HEIGHT);
+void
+__no_inline_not_in_flash_func(drawMap)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
+    if (raster_y < 0) return;
+    if (raster_y >= screenHeight) return;
 
-        for (int raster_x = 0; raster_x < screenWidth; raster_x += TILE_WIDTH) {
-            uint8_t col = raster_x / TILE_WIDTH;
-            uint8_t tileNumber = map[row][col];
-            uint8_t tilePalette = map_tile_palettes[row][col];
+    int offset = (raster_y / TILE_HEIGHT) * 20;
+    int lineOffset = raster_y % TILE_HEIGHT;
 
-            uint32_t line = tiles[tileNumber][raster_y % TILE_HEIGHT];
+    for (int x = 0; x < 20; x++) {
+        uint8_t tileNumber = map[offset + x];
+        uint8_t tilePalette = map_tile_palettes[offset + x];
+        uint32_t line = tiles[tileNumber][lineOffset];
 
-            uint8_t c0 = ((line & 0b11000000000000000000000000000000) >> 30);
-            uint8_t c1 = ((line & 0b00110000000000000000000000000000) >> 28);
-            uint8_t c2 = ((line & 0b00001100000000000000000000000000) >> 26);
-            uint8_t c3 = ((line & 0b00000011000000000000000000000000) >> 24);
-            uint8_t c4 = ((line & 0b00000000110000000000000000000000) >> 22);
-            uint8_t c5 = ((line & 0b00000000001100000000000000000000) >> 20);
-            uint8_t c6 = ((line & 0b00000000000011000000000000000000) >> 18);
-            uint8_t c7 = ((line & 0b00000000000000110000000000000000) >> 16);
-            uint8_t c8 = ((line & 0b00000000000000001100000000000000) >> 14);
-            uint8_t c9 = ((line & 0b00000000000000000011000000000000) >> 12);
-            uint8_t ca = ((line & 0b00000000000000000000110000000000) >> 10);
-            uint8_t cb = ((line & 0b00000000000000000000001100000000) >> 8);
-            uint8_t cc = ((line & 0b00000000000000000000000011000000) >> 6);
-            uint8_t cd = ((line & 0b00000000000000000000000000110000) >> 4);
-            uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
-            uint8_t cf = ((line & 0b00000000000000000000000000000011) >> 0);
+        uint8_t c0 = ((line & 0b11000000000000000000000000000000) >> 30);
+        uint8_t c1 = ((line & 0b00110000000000000000000000000000) >> 28);
+        uint8_t c2 = ((line & 0b00001100000000000000000000000000) >> 26);
+        uint8_t c3 = ((line & 0b00000011000000000000000000000000) >> 24);
+        uint8_t c4 = ((line & 0b00000000110000000000000000000000) >> 22);
+        uint8_t c5 = ((line & 0b00000000001100000000000000000000) >> 20);
+        uint8_t c6 = ((line & 0b00000000000011000000000000000000) >> 18);
+        uint8_t c7 = ((line & 0b00000000000000110000000000000000) >> 16);
+        uint8_t c8 = ((line & 0b00000000000000001100000000000000) >> 14);
+        uint8_t c9 = ((line & 0b00000000000000000011000000000000) >> 12);
+        uint8_t ca = ((line & 0b00000000000000000000110000000000) >> 10);
+        uint8_t cb = ((line & 0b00000000000000000000001100000000) >> 8);
+        uint8_t cc = ((line & 0b00000000000000000000000011000000) >> 6);
+        uint8_t cd = ((line & 0b00000000000000000000000000110000) >> 4);
+        uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
+        uint8_t cf = ((line & 0b00000000000000000000000000000011) >> 0);
 
-            // The pixel buffer is shifted to the left by 16 pixels.
-            // This allows sprites to enter from the left without "instantly appearing".
-            // This also means that tile x position 0 is invisible.  So we need to add 16 to move it back over
-            pixels[raster_x + 16] = tile_palettes[tilePalette].color[c0];
-            pixels[raster_x + 17] = tile_palettes[tilePalette].color[c1];
-            pixels[raster_x + 18] = tile_palettes[tilePalette].color[c2];
-            pixels[raster_x + 19] = tile_palettes[tilePalette].color[c3];
-            pixels[raster_x + 20] = tile_palettes[tilePalette].color[c4];
-            pixels[raster_x + 21] = tile_palettes[tilePalette].color[c5];
-            pixels[raster_x + 22] = tile_palettes[tilePalette].color[c6];
-            pixels[raster_x + 23] = tile_palettes[tilePalette].color[c7];
-            pixels[raster_x + 24] = tile_palettes[tilePalette].color[c8];
-            pixels[raster_x + 25] = tile_palettes[tilePalette].color[c9];
-            pixels[raster_x + 26] = tile_palettes[tilePalette].color[ca];
-            pixels[raster_x + 27] = tile_palettes[tilePalette].color[cb];
-            pixels[raster_x + 28] = tile_palettes[tilePalette].color[cc];
-            pixels[raster_x + 29] = tile_palettes[tilePalette].color[cd];
-            pixels[raster_x + 30] = tile_palettes[tilePalette].color[ce];
-            pixels[raster_x + 31] = tile_palettes[tilePalette].color[cf];
-        }
+        pixels[x * TILE_WIDTH] = tile_palettes[tilePalette].color[c0];
+        pixels[x * TILE_WIDTH + 1] = tile_palettes[tilePalette].color[c1];
+        pixels[x * TILE_WIDTH + 2] = tile_palettes[tilePalette].color[c2];
+        pixels[x * TILE_WIDTH + 3] = tile_palettes[tilePalette].color[c3];
+        pixels[x * TILE_WIDTH + 4] = tile_palettes[tilePalette].color[c4];
+        pixels[x * TILE_WIDTH + 5] = tile_palettes[tilePalette].color[c5];
+        pixels[x * TILE_WIDTH + 6] = tile_palettes[tilePalette].color[c6];
+        pixels[x * TILE_WIDTH + 7] = tile_palettes[tilePalette].color[c7];
+        pixels[x * TILE_WIDTH + 8] = tile_palettes[tilePalette].color[c8];
+        pixels[x * TILE_WIDTH + 9] = tile_palettes[tilePalette].color[c9];
+        pixels[x * TILE_WIDTH + 10] = tile_palettes[tilePalette].color[ca];
+        pixels[x * TILE_WIDTH + 11] = tile_palettes[tilePalette].color[cb];
+
+        pixels[x * TILE_WIDTH + 12] = tile_palettes[tilePalette].color[cc];     // breaks here
+        pixels[x * TILE_WIDTH + 13] = tile_palettes[tilePalette].color[cd];
+        pixels[x * TILE_WIDTH + 14] = tile_palettes[tilePalette].color[ce];
+        pixels[x * TILE_WIDTH + 15] = tile_palettes[tilePalette].color[cf];
     }
 }
 
-void initMap() {
-    map_x = 0;
-}
 
 void setTilePalette(uint8_t number, uint16_t color0, uint16_t color1, uint16_t color2, uint16_t color3) {
     if (number < 0 || number >= NUMBER_OF_TILE_PALETTES) return;
@@ -117,8 +111,6 @@ void setTilePalette(uint8_t number, uint16_t color0, uint16_t color1, uint16_t c
 
 
 void updateMap() {
-//    map_x++;
-//    if (map_x > 320) map_x = 0;
 }
 
 

@@ -26,7 +26,6 @@
 #include "hardware/clocks.h"
 
 #include "bit_helper.h"
-#include "font_utils.h"
 #include "screen_modes.h"
 
 #include "sprites.h"
@@ -34,6 +33,7 @@
 
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 
 
 #define SYNC_PINS_START 0        // first sync pin gpio number
@@ -49,6 +49,11 @@
 #define END_OF_SCANLINE_MSG     0x40000000
 #define END_OF_FRAME_MSG        0x80000000
 
+// Private methods
+void drawCircleHelper(short x0, short y0, short r, uint16_t cornername, uint16_t color);
+void fillCircleHelper(short x0, short y0, short r, uint16_t cornername, short delta, uint16_t color);
+
+
 /*
  * sync pio dma data buffers
  */
@@ -56,15 +61,13 @@ uint32_t __aligned(4) syncDataActive[4];  // active display area
 uint32_t __aligned(4) syncDataPorch[4];   // vertical porch
 uint32_t __aligned(4) syncDataSync[4];    // vertical sync
 
-uint16_t __aligned(4) rgbDataBufferA[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
-uint16_t __aligned(4) rgbDataBufferB[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
-
+uint16_t __aligned(4) rgbDataBufferA[VGA_VIRTUAL_WIDTH];
+uint16_t __aligned(4) rgbDataBufferB[VGA_VIRTUAL_WIDTH];
 
 #define SYNC_LINE_ACTIVE 0
 #define SYNC_LINE_FPORCH 1
 #define SYNC_LINE_HSYNC  2
 #define SYNC_LINE_BPORCH 3
-
 
 
 /**
@@ -80,8 +83,8 @@ uint16_t __aligned(4) frame_buffer[VGA_VIRTUAL_WIDTH * VGA_VIRTUAL_HEIGHT];
  */
 static int syncDmaChan = 0;
 static int rgbDmaChan = 0;
-static VgaInitParams vgaParams;
-static ScreenModeParams screenModeParams;
+static VgaInitParams vgaInitParams;
+static VgaParams vgaParams;
 
 
 /*
@@ -92,23 +95,19 @@ static void buildSyncData(void) {
     const uint32_t pioClockKHz = sysClockKHz;
 
     // compute number of pio ticks for a single pixel
-    const float pioClocksPerPixel = (float) pioClockKHz / screenModeParams.pixel_clock_in_khz;
+    const float pioClocksPerPixel = (float) pioClockKHz / vgaParams.pixel_clock_in_khz;
 
     // compute pio ticks for each phase of the scanline
-    const uint32_t activeTicks =
-            round(pioClocksPerPixel * (float) screenModeParams.active_x_pixels) - vga_sync_SETUP_OVERHEAD;
-    const uint32_t fPorchTicks =
-            round(pioClocksPerPixel * (float) screenModeParams.front_porch_x_pixels) - vga_sync_SETUP_OVERHEAD;
-    const uint32_t syncTicks =
-            round(pioClocksPerPixel * (float) screenModeParams.hsync_x_pixels) - vga_sync_SETUP_OVERHEAD;
-    const uint32_t bPorchTicks =
-            round(pioClocksPerPixel * (float) screenModeParams.back_porch_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t activeTicks = round(pioClocksPerPixel * (float) vgaParams.active_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t fPorchTicks = round(pioClocksPerPixel * (float) vgaParams.front_porch_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t syncTicks = round(pioClocksPerPixel * (float) vgaParams.hsync_x_pixels) - vga_sync_SETUP_OVERHEAD;
+    const uint32_t bPorchTicks = round(pioClocksPerPixel * (float) vgaParams.back_porch_x_pixels) - vga_sync_SETUP_OVERHEAD;
 
     // compute sync bits
-    const uint32_t hSyncOff = (screenModeParams.hsync_pulse_positive ? 0b00 : 0b01) << vga_sync_WORD_SYNC_OFFSET;
-    const uint32_t hSyncOn = (screenModeParams.hsync_pulse_positive ? 0b01 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
-    const uint32_t vSyncOff = (screenModeParams.vsync_pulse_positive ? 0b00 : 0b10) << vga_sync_WORD_SYNC_OFFSET;
-    const uint32_t vSyncOn = (screenModeParams.vsync_pulse_positive ? 0b10 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t hSyncOff = (vgaParams.hsync_pulse_positive ? 0b00 : 0b01) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t hSyncOn = (vgaParams.hsync_pulse_positive ? 0b01 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t vSyncOff = (vgaParams.vsync_pulse_positive ? 0b00 : 0b10) << vga_sync_WORD_SYNC_OFFSET;
+    const uint32_t vSyncOn = (vgaParams.vsync_pulse_positive ? 0b10 : 0b00) << vga_sync_WORD_SYNC_OFFSET;
 
     // compute exec instructions
     const uint32_t instIrq = pio_encode_irq_set(false, vga_rgb_RGB_IRQ) << vga_sync_WORD_EXEC_OFFSET;
@@ -163,8 +162,7 @@ static void vgaInitSync(void) {
     channel_config_set_transfer_data_size(&syncDmaChanConfig, DMA_SIZE_32);           // transfer 32 bits at a time
     channel_config_set_read_increment(&syncDmaChanConfig, true);                       // increment read
     channel_config_set_write_increment(&syncDmaChanConfig, false);                     // don't increment write
-    channel_config_set_dreq(&syncDmaChanConfig,
-                            pio_get_dreq(VGA_PIO, SYNC_SM, true)); // transfer when there's space in fifo
+    channel_config_set_dreq(&syncDmaChanConfig, pio_get_dreq(VGA_PIO, SYNC_SM, true)); // transfer when there's space in fifo
 
     // setup the dma channel and set it going
     dma_channel_configure(syncDmaChan, &syncDmaChanConfig, &VGA_PIO->txf[SYNC_SM], syncDataSync, 4, false);
@@ -179,15 +177,15 @@ static void vgaInitRgb(void) {
     const uint32_t sysClockKHz = clock_get_hz(clk_sys) / 1000;
     uint32_t pioClockKHz = sysClockKHz;
     float pioClkDiv = 1.0f;
-    float pioClocksPerScaledPixel = pioClockKHz * screenModeParams.pixel_scale_x / screenModeParams.pixel_clock_in_khz;
+    float pioClocksPerScaledPixel = pioClockKHz * vgaParams.pixel_scale_x / vgaParams.pixel_clock_in_khz;
     while (pioClocksPerScaledPixel > 31) {
         ++pioClkDiv;
         pioClockKHz = sysClockKHz / pioClkDiv;
-        pioClocksPerScaledPixel = pioClockKHz * screenModeParams.pixel_scale_x / screenModeParams.pixel_clock_in_khz;
+        pioClocksPerScaledPixel = pioClockKHz * vgaParams.pixel_scale_x / vgaParams.pixel_clock_in_khz;
     }
 
     // compute number of pio ticks for a single pixel
-    const float pioClocksPerPixel = pioClockKHz / screenModeParams.pixel_clock_in_khz;
+    const float pioClocksPerPixel = pioClockKHz / vgaParams.pixel_clock_in_khz;
     const uint32_t rgbCyclesPerPixel = round(pioClocksPerScaledPixel);
 
     // copy the rgb program and set the appropriate pixel delay
@@ -208,7 +206,7 @@ static void vgaInitRgb(void) {
 
     // add rgb pio program
     pio_sm_set_consecutive_pindirs(VGA_PIO, RGB_SM, RGB_PINS_START, RGB_PINS_COUNT, true);
-    pio_set_y(VGA_PIO, RGB_SM, screenModeParams.vga_virtual_pixel_width - 1);
+    pio_set_y(VGA_PIO, RGB_SM, vgaParams.vga_virtual_pixel_width - 1);
 
     uint rgbProgOffset = pio_add_program(VGA_PIO, &rgbProgram);
     pio_sm_config rgbConfig = vga_rgb_program_get_default_config(rgbProgOffset);
@@ -234,7 +232,7 @@ static void vgaInitRgb(void) {
                           &rgbDmaChanConfig,
                           &VGA_PIO->txf[RGB_SM],
                           rgbDataBufferA,
-                          screenModeParams.vga_virtual_pixel_width,
+                          vgaParams.vga_virtual_pixel_width,
                           false
     );
     dma_channel_set_irq0_enabled(rgbDmaChan, true);
@@ -242,8 +240,6 @@ static void vgaInitRgb(void) {
 
 /*
  * DMA interrupt handler
- * Modified: Cecil Meeks
- *  Added support for shifting the starting buffer address to allow sprites to "scroll into" frame.
  */
 static void __time_critical_func(dmaIrqHandler)(void) {
     static int currentTimingLine = -1;
@@ -252,16 +248,16 @@ static void __time_critical_func(dmaIrqHandler)(void) {
     if (dma_hw->ints0 & (1u << syncDmaChan)) {
         dma_hw->ints0 = 1u << syncDmaChan;
 
-        if (++currentTimingLine >= screenModeParams.total_y_pixels) {
+        if (++currentTimingLine >= vgaParams.total_y_pixels) {
             currentTimingLine = 0;
             currentDisplayLine = 0;
         }
 
-        if (currentTimingLine < screenModeParams.vsync_y_pixels) {
+        if (currentTimingLine < vgaParams.vsync_y_pixels) {
             dma_channel_set_read_addr(syncDmaChan, syncDataSync, true);
-        } else if (currentTimingLine < (screenModeParams.vsync_y_pixels + screenModeParams.back_porch_y_pixels)) {
+        } else if (currentTimingLine < (vgaParams.vsync_y_pixels + vgaParams.back_porch_y_pixels)) {
             dma_channel_set_read_addr(syncDmaChan, syncDataPorch, true);
-        } else if (currentTimingLine < (screenModeParams.total_y_pixels - screenModeParams.front_porch_y_pixels)) {
+        } else if (currentTimingLine < (vgaParams.total_y_pixels - vgaParams.front_porch_y_pixels)) {
             dma_channel_set_read_addr(syncDmaChan, syncDataActive, true);
         } else {
             dma_channel_set_read_addr(syncDmaChan, syncDataPorch, true);
@@ -271,15 +267,11 @@ static void __time_critical_func(dmaIrqHandler)(void) {
     if (dma_hw->ints0 & (1u << rgbDmaChan)) {
         dma_hw->ints0 = 1u << rgbDmaChan;
 
-        divmod_result_t pxLineVal = divmod_u32u32(++currentDisplayLine, screenModeParams.pixel_scale_y);
+        divmod_result_t pxLineVal = divmod_u32u32(++currentDisplayLine, vgaParams.pixel_scale_y);
         uint32_t pxLine = to_quotient_u32(pxLineVal);
         uint32_t pxLineRpt = to_remainder_u32(pxLineVal);
 
-        dma_channel_set_read_addr(rgbDmaChan, (pxLine & 1) ?
-                                              rgbDataBufferB + BUFFER_START_OFFSET :
-                                              rgbDataBufferA + BUFFER_START_OFFSET, true
-        );
-
+        dma_channel_set_read_addr(rgbDmaChan, (pxLine & 1) ? rgbDataBufferB : rgbDataBufferA, true);
 
         // need a new line every X display lines
         if (pxLineRpt == 0) {
@@ -313,16 +305,14 @@ _Noreturn static void vgaLoop() {
     while (1) {
         uint32_t message = multicore_fifo_pop_blocking();
         if (message == END_OF_FRAME_MSG) {
-            if (vgaParams.endOfFrameFn)
-                vgaParams.endOfFrameFn(frame_counter);
+            if (vgaInitParams.endOfFrameFn) vgaInitParams.endOfFrameFn(frame_counter);
             ++frame_counter;
         } else if ((message & END_OF_SCANLINE_MSG) != 0) {
-            if (vgaParams.endOfScanlineFn)
-                vgaParams.endOfScanlineFn();
+            if (vgaInitParams.endOfScanlineFn) vgaInitParams.endOfScanlineFn();
         } else if (message & 0x01) {
-            vgaParams.scanlineFn(message & 0xfff, rgbDataBufferB);
+            vgaInitParams.scanlineFn(message & 0xfff, rgbDataBufferB);
         } else {
-            vgaParams.scanlineFn(message & 0xfff, rgbDataBufferA);
+            vgaInitParams.scanlineFn(message & 0xfff, rgbDataBufferA);
         }
     }
 }
@@ -331,9 +321,9 @@ _Noreturn static void vgaLoop() {
 /*
  * initialise the vga
  */
-void vgaInit(VgaInitParams params, ScreenModeParams modeParams) {
-    vgaParams = params;
-    screenModeParams = modeParams;
+void vgaInit(VgaInitParams params, VgaParams modeParams) {
+    vgaInitParams = params;
+    vgaParams = modeParams;
 
     vgaInitSync();
     vgaInitRgb();
@@ -347,38 +337,45 @@ void vgaInit(VgaInitParams params, ScreenModeParams modeParams) {
 }
 
 
-void screen_Mode0_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
-    uint16_t screenHeight = screenModeParams.vga_virtual_pixel_height;
-    drawChars(raster_y, screenHeight, pixels);
+void scanline_chars(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
+    drawChars(raster_y, vgaParams.vga_virtual_pixel_height, pixels);
 }
 
-void screen_Mode1_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
-    uint16_t screenWidth = screenModeParams.vga_virtual_pixel_width;
-    uint16_t screenHeight = screenModeParams.vga_virtual_pixel_height;
+void scanline_chars_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
+    uint16_t screenWidth = vgaParams.vga_virtual_pixel_width;
+    uint16_t screenHeight = vgaParams.vga_virtual_pixel_height;
 
     drawChars(raster_y, screenHeight, pixels);
     drawSprites(screenWidth, screenHeight, raster_y, pixels);
 
     // About 60 fps
-    if (raster_y == screenModeParams.vga_virtual_pixel_height - 1) {
+    if (raster_y == vgaParams.vga_virtual_pixel_height - 1) {
         updateSprites();
     }
 }
 
-void screen_Mode2_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width]) {
-//    memcpy(pixels, toucan + raster_y * VGA_VIRTUAL_WIDTH, VGA_VIRTUAL_WIDTH * sizeof(uint16_t));
+// Bitmap line with sprites
+void scanline_bitmap_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
+    uint16_t screenWidth = vgaParams.vga_virtual_pixel_width;
+    uint16_t screenHeight = vgaParams.vga_virtual_pixel_height;
+
+    memcpy(pixels, frame_buffer + raster_y * screenWidth, screenWidth * sizeof(uint16_t));
+    drawSprites(screenWidth, screenHeight, raster_y, pixels);
+
+    if (raster_y == vgaParams.vga_virtual_pixel_height - 1) {
+        updateSprites();
+    }
 }
 
-void
-screen_Mode3_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_virtual_pixel_width + BUFFER_PADDING]) {
-    uint16_t screenWidth = screenModeParams.vga_virtual_pixel_width;
-    uint16_t screenHeight = screenModeParams.vga_virtual_pixel_height;
+void scanline_map_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
+    uint16_t screenWidth = vgaParams.vga_virtual_pixel_width;
+    uint16_t screenHeight = vgaParams.vga_virtual_pixel_height;
 
     drawMap(screenWidth, screenHeight, raster_y, pixels);
     drawSprites(screenWidth, screenHeight, raster_y, pixels);
 
     // About 60 fps
-    if (raster_y == screenModeParams.vga_virtual_pixel_height - 1) {
+    if (raster_y == vgaParams.vga_virtual_pixel_height - 1) {
         updateMap();
         updateSprites();
     }
@@ -395,9 +392,9 @@ screen_Mode3_Scanline(uint16_t raster_y, uint16_t pixels[screenModeParams.vga_vi
  * @param color color to draw
  */
 void drawPixel(uint16_t x, uint16_t y, uint16_t color) {
-    x %= screenModeParams.vga_virtual_pixel_width;
+    x %= vgaParams.vga_virtual_pixel_width;
     y %= VGA_VIRTUAL_HEIGHT;
-    frame_buffer[y * screenModeParams.vga_virtual_pixel_width + x] = color;
+    frame_buffer[y * vgaParams.vga_virtual_pixel_width + x] = color;
 }
 
 void drawVLine(uint16_t x, uint16_t y, uint16_t h, uint16_t color) {
@@ -412,5 +409,224 @@ void drawHLine(uint16_t x, uint16_t y, uint16_t w, uint16_t color) {
     }
 }
 
+// Bresenham's algorithm - thx wikipedia and thx Bruce!
+void drawLine(short x0, short y0, short x1, short y1, uint16_t color) {
+    /* Draw a straight line from (x0,y0) to (x1,y1) with given color
+      Parameters:
+           x0: x-coordinate of starting point of line. The x-coordinate of
+               the top-left of the screen is 0. It increases to the right.
+           y0: y-coordinate of starting point of line. The y-coordinate of
+               the top-left of the screen is 0. It increases to the bottom.
+           x1: x-coordinate of ending point of line. The x-coordinate of
+               the top-left of the screen is 0. It increases to the right.
+           y1: y-coordinate of ending point of line. The y-coordinate of
+               the top-left of the screen is 0. It increases to the bottom.
+           color: 6-bit color value for line
+    */
+    short steep = abs(y1 - y0) > abs(x1 - x0);
+    if (steep) {
+        swap(x0, y0);
+        swap(x1, y1);
+    }
 
+    if (x0 > x1) {
+        swap(x0, x1);
+        swap(y0, y1);
+    }
+
+    short dx, dy;
+    dx = x1 - x0;
+    dy = abs(y1 - y0);
+
+    short err = dx / 2;
+    short ystep;
+
+    if (y0 < y1) {
+        ystep = 1;
+    } else {
+        ystep = -1;
+    }
+
+    for (; x0 <= x1; x0++) {
+        if (steep) {
+            drawPixel(y0, x0, color);
+        } else {
+            drawPixel(x0, y0, color);
+        }
+        err -= dy;
+        if (err < 0) {
+            y0 += ystep;
+            err += dx;
+        }
+    }
+}
+
+// Draw a rectangle
+void drawRect(short x, short y, short w, short h, uint16_t color) {
+    /* Draw a rectangle outline with top left vertex (x,y), width w
+      and height h at given color
+      Parameters:
+           x:  x-coordinate of top-left vertex. The x-coordinate of
+               the top-left of the screen is 0. It increases to the right.
+           y:  y-coordinate of top-left vertex. The y-coordinate of
+               the top-left of the screen is 0. It increases to the bottom.
+           w:  width of the rectangle
+           h:  height of the rectangle
+           color:  16-bit color of the rectangle outline
+      Returns: Nothing
+    */
+    drawHLine(x, y, w, color);
+    drawHLine(x, y + h - 1, w, color);
+    drawVLine(x, y, h, color);
+    drawVLine(x + w - 1, y, h, color);
+}
+
+void drawRectCenter(short x, short y, short w, short h, uint16_t color) {
+    drawRect(x - w / 2, y - h / 2, w, h, color);
+}
+
+void drawCircle(short x0, short y0, short r, uint16_t color) {
+    /* Draw a circle outline with center (x0,y0) and radius r, with given color
+      Parameters:
+           x0: x-coordinate of center of circle. The top-left of the screen
+               has x-coordinate 0 and increases to the right
+           y0: y-coordinate of center of circle. The top-left of the screen
+               has y-coordinate 0 and increases to the bottom
+           r:  radius of circle
+           color: 16-bit color value for the circle. Note that the circle
+               isn't filled. So, this is the color of the outline of the circle
+      Returns: Nothing
+    */
+    short f = 1 - r;
+    short ddF_x = 1;
+    short ddF_y = -2 * r;
+    short x = 0;
+    short y = r;
+
+    drawPixel(x0, y0 + r, color);
+    drawPixel(x0, y0 - r, color);
+    drawPixel(x0 + r, y0, color);
+    drawPixel(x0 - r, y0, color);
+
+    while (x < y) {
+        if (f >= 0) {
+            y--;
+            ddF_y += 2;
+            f += ddF_y;
+        }
+        x++;
+        ddF_x += 2;
+        f += ddF_x;
+
+        drawPixel(x0 + x, y0 + y, color);
+        drawPixel(x0 - x, y0 + y, color);
+        drawPixel(x0 + x, y0 - y, color);
+        drawPixel(x0 - x, y0 - y, color);
+        drawPixel(x0 + y, y0 + x, color);
+        drawPixel(x0 - y, y0 + x, color);
+        drawPixel(x0 + y, y0 - x, color);
+        drawPixel(x0 - y, y0 - x, color);
+    }
+}
+
+void drawCircleHelper(short x0, short y0, short r, uint16_t cornername, uint16_t color) {
+    // Helper function for drawing circles and circular objects
+    short f = 1 - r;
+    short ddF_x = 1;
+    short ddF_y = -2 * r;
+    short x = 0;
+    short y = r;
+
+    while (x < y) {
+        if (f >= 0) {
+            y--;
+            ddF_y += 2;
+            f += ddF_y;
+        }
+        x++;
+        ddF_x += 2;
+        f += ddF_x;
+        if (cornername & 0x4) {
+            drawPixel(x0 + x, y0 + y, color);
+            drawPixel(x0 + y, y0 + x, color);
+        }
+        if (cornername & 0x2) {
+            drawPixel(x0 + x, y0 - y, color);
+            drawPixel(x0 + y, y0 - x, color);
+        }
+        if (cornername & 0x8) {
+            drawPixel(x0 - y, y0 + x, color);
+            drawPixel(x0 - x, y0 + y, color);
+        }
+        if (cornername & 0x1) {
+            drawPixel(x0 - y, y0 - x, color);
+            drawPixel(x0 - x, y0 - y, color);
+        }
+    }
+}
+
+void fillCircle(short x0, short y0, short r, uint16_t color) {
+    /* Draw a filled circle with center (x0,y0) and radius r, with given color
+      Parameters:
+           x0: x-coordinate of center of circle. The top-left of the screen
+               has x-coordinate 0 and increases to the right
+           y0: y-coordinate of center of circle. The top-left of the screen
+               has y-coordinate 0 and increases to the bottom
+           r:  radius of circle
+           color: 16-bit color value for the circle
+      Returns: Nothing
+    */
+    drawVLine(x0, y0 - r, 2 * r + 1, color);
+    fillCircleHelper(x0, y0, r, 3, 0, color);
+}
+
+void fillCircleHelper(short x0, short y0, short r, uint16_t cornername, short delta, uint16_t color) {
+    // Helper function for drawing filled circles
+    short f = 1 - r;
+    short ddF_x = 1;
+    short ddF_y = -2 * r;
+    short x = 0;
+    short y = r;
+
+    while (x < y) {
+        if (f >= 0) {
+            y--;
+            ddF_y += 2;
+            f += ddF_y;
+        }
+        x++;
+        ddF_x += 2;
+        f += ddF_x;
+
+        if (cornername & 0x1) {
+            drawVLine(x0 + x, y0 - y, 2 * y + 1 + delta, color);
+            drawVLine(x0 + y, y0 - x, 2 * x + 1 + delta, color);
+        }
+        if (cornername & 0x2) {
+            drawVLine(x0 - x, y0 - y, 2 * y + 1 + delta, color);
+            drawVLine(x0 - y, y0 - x, 2 * x + 1 + delta, color);
+        }
+    }
+}
+
+void fillRect(short x, short y, short w, short h, uint16_t color) {
+    /* Draw a filled rectangle with starting top-left vertex (x,y),
+       width w and height h with given color
+      Parameters:
+           x:  x-coordinate of top-left vertex; top left of screen is x=0
+                   and x increases to the right
+           y:  y-coordinate of top-left vertex; top left of screen is y=0
+                   and y increases to the bottom
+           w:  width of rectangle
+           h:  height of rectangle
+           color:  3-bit color value
+      Returns:     Nothing
+    */
+
+    for (int i = x; i < (x + w); i++) {
+        for (int j = y; j < (y + h); j++) {
+            drawPixel(i, j, color);
+        }
+    }
+}
 
