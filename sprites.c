@@ -33,29 +33,18 @@ void initSprites(VgaParams modeParams) {
     }
 }
 
-void ERASEME_EXAMPLE(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
-    if (raster_y < 0) return;
-    if (raster_y >= screenHeight) return;
 
-    for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
-        if (!sprites[s].visible) continue;
-        if (raster_y >= sprites[s].y && raster_y < (sprites[s].y + sprites[s].height)) {
-            int offset = (raster_y - sprites[s].y);
-            uint32_t line = sprites[s].frame[offset];
-
-            // Compiler can unroll, no more branches
-            for (uint32_t i = 0; i < 16; i++) {
-                uint8_t index = (line >> (30 - (i * 2))) & 0x3;
-                if (index > 0) pixels[sprites[s].x + i] = sprite_palettes[sprites[s].palette].color[index];
-            }
-        }
-    }
-}
-
-
+/**
+ * drawSprites
+ * Draws sprites on the pixel buffer.
+ * Special thanks to Adam Green for helping me optimize this!
+ * @param screenWidth width of screen in pixels
+ * @param screenHeight height of screen in pixels
+ * @param raster_y current raster Y position
+ * @param pixels pixel buffer (scanline)
+ */
 void
 __no_inline_not_in_flash_func(drawSprites)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
-    if (raster_y < 0) return;
     if (raster_y >= screenHeight) return;
 
     for (int s = 0; s < NUMBER_OF_SPRITES; s++) {
@@ -64,42 +53,100 @@ __no_inline_not_in_flash_func(drawSprites)(uint16_t screenWidth, uint16_t screen
             int offset = (raster_y - sprites[s].y);
             uint32_t line = sprites[s].frame[offset];
 
-            uint8_t c0 = ((line & 0b11000000000000000000000000000000) >> 30);
-            uint8_t c1 = ((line & 0b00110000000000000000000000000000) >> 28);
-            uint8_t c2 = ((line & 0b00001100000000000000000000000000) >> 26);
-            uint8_t c3 = ((line & 0b00000011000000000000000000000000) >> 24);
-            uint8_t c4 = ((line & 0b00000000110000000000000000000000) >> 22);
-            uint8_t c5 = ((line & 0b00000000001100000000000000000000) >> 20);
-            uint8_t c6 = ((line & 0b00000000000011000000000000000000) >> 18);
-            uint8_t c7 = ((line & 0b00000000000000110000000000000000) >> 16);
-            uint8_t c8 = ((line & 0b00000000000000001100000000000000) >> 14);
-            uint8_t c9 = ((line & 0b00000000000000000011000000000000) >> 12);
-            uint8_t ca = ((line & 0b00000000000000000000110000000000) >> 10);
-            uint8_t cb = ((line & 0b00000000000000000000001100000000) >> 8);
-            uint8_t cc = ((line & 0b00000000000000000000000011000000) >> 6);
-            uint8_t cd = ((line & 0b00000000000000000000000000110000) >> 4);
-            uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
-            uint8_t cf = ((line & 0b00000000000000000000000000000011));
+            // Pre-calculate the highest pixel address (rightmost) in pixels.
+            // Can just decrement this pointer rather than recalculating for each of the 16 pixels.
+            uint16_t *pixel = &pixels[sprites[s].x + 15];
 
-            if (c0) { pixels[sprites[s].x + 0] = sprite_palettes[sprites[s].palette].color[c0]; }
-            if (c1) { pixels[sprites[s].x + 1] = sprite_palettes[sprites[s].palette].color[c1]; }
-            if (c2) { pixels[sprites[s].x + 2] = sprite_palettes[sprites[s].palette].color[c2]; }
-            if (c3) { pixels[sprites[s].x + 3] = sprite_palettes[sprites[s].palette].color[c3]; }
-            if (c4) { pixels[sprites[s].x + 4] = sprite_palettes[sprites[s].palette].color[c4]; }
-            if (c5) { pixels[sprites[s].x + 5] = sprite_palettes[sprites[s].palette].color[c5]; }
-            if (c6) { pixels[sprites[s].x + 6] = sprite_palettes[sprites[s].palette].color[c6]; }
-            if (c7) { pixels[sprites[s].x + 7] = sprite_palettes[sprites[s].palette].color[c7]; }
-            if (c8) { pixels[sprites[s].x + 8] = sprite_palettes[sprites[s].palette].color[c8]; }
-            if (c9) { pixels[sprites[s].x + 9] = sprite_palettes[sprites[s].palette].color[c9]; }
-            if (ca) { pixels[sprites[s].x + 10] = sprite_palettes[sprites[s].palette].color[ca]; }
-            if (cb) { pixels[sprites[s].x + 11] = sprite_palettes[sprites[s].palette].color[cb]; }
-            if (cc) { pixels[sprites[s].x + 12] = sprite_palettes[sprites[s].palette].color[cc]; }
-            if (cd) { pixels[sprites[s].x + 13] = sprite_palettes[sprites[s].palette].color[cd]; }
-            if (ce) { pixels[sprites[s].x + 14] = sprite_palettes[sprites[s].palette].color[ce]; }
-            if (cf) { pixels[sprites[s].x + 15] = sprite_palettes[sprites[s].palette].color[cf]; }
+            // Pre-calculate the palette which is appropriate for this sprite.
+            // Previously it would be recalculated for each of the 16 pixels.
+            SpritePalette *palette = &sprite_palettes[sprites[s].palette];
+
+            // Perform the color extraction from line and the pixel update for each pixel at the same time to
+            // reduce register pressure. This saves extra memory reads/writes to recover pixel color values from the
+            // stack.
+            // I updated them in reverse order to simplify the calculation down to right shift by 2-bits and masking off
+            // the lower 2-bits (same operation for each pixel).
+            uint8_t cf = line & 0b11;
+            if (cf) { *pixel = palette->color[cf]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t ce = line & 0b11;
+            if (ce) { *pixel = palette->color[ce]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t cd = line & 0b11;
+            if (cd) { *pixel = palette->color[cd]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t cc = line & 0b11;
+            if (cc) { *pixel = palette->color[cc]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t cb = line & 0b11;
+            if (cb) { *pixel = palette->color[cb]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t ca = line & 0b11;
+            if (ca) { *pixel = palette->color[ca]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c9 = line & 0b11;
+            if (c9) { *pixel = palette->color[c9]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c8 = line & 0b11;
+            if (c8) { *pixel = palette->color[c8]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c7 = line & 0b11;
+            if (c7) { *pixel = palette->color[c7]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c6 = line & 0b11;
+            if (c6) { *pixel = palette->color[c6]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c5 = line & 0b11;
+            if (c5) { *pixel = palette->color[c5]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c4 = line & 0b11;
+            if (c4) { *pixel = palette->color[c4]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c3 = line & 0b11;
+            if (c3) { *pixel = palette->color[c3]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c2 = line & 0b11;
+            if (c2) { *pixel = palette->color[c2]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c1 = line & 0b11;
+            if (c1) { *pixel = palette->color[c1]; }
+
+            line >>= 2;
+            pixel--;
+            uint8_t c0 = line & 0b11;
+            if (c0) { *pixel = palette->color[c0]; }
         }
     }
 }
+
 
 void updateSprites() {
     for (int s = 0; s < NUMBER_OF_SPRITES; s++) {

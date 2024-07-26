@@ -39,10 +39,10 @@ int main(void) {
     initSprites(vgaParams);
 
 
-    int sprites_per_scanline = 16;
+    int sprites_per_scanline = 24;
     for (int i = 0; i < sprites_per_scanline; i++) {
-        setSprite(i, 32 + (i * 16), 64, 0, 0);
-        setSpriteFrame(i, zoomer);
+        setSprite(i, 1 + (i * 8), 64, 0, 0);
+        setSpriteFrame(i, blank16x16);
         setSpriteSize(i, 16, 16);
         setSpriteVisible(i, true);
         setSpritePalette(i, i % 4);
