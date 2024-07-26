@@ -14,7 +14,9 @@ static SpritePalette sprite_palettes[NUMBER_OF_SPRITE_PALETTES] = {
         {0x0000, 0x0e06, 0x0fcb, 0x0444},
         {0x0000, 0x09fe, 0x0f93, 0x04d4},       // zoomer
         {0x0000, 0x0c41, 0x0fba, 0x0d05},       // Samus no suit
+        {0x0000, 0x0fcf, 0x0c0c, 0x0f8f},
 };
+
 
 static VgaParams vgaParams;
 
@@ -55,7 +57,7 @@ __no_inline_not_in_flash_func(drawSprites)(uint16_t screenWidth, uint16_t screen
 
             // Pre-calculate the highest pixel address (rightmost) in pixels.
             // Can just decrement this pointer rather than recalculating for each of the 16 pixels.
-            uint16_t *pixel = &pixels[sprites[s].x + 15];
+            uint16_t *pixel = &pixels[sprites[s].x + 15];  // Right most sprite pixel (+15)
 
             // Pre-calculate the palette which is appropriate for this sprite.
             // Previously it would be recalculated for each of the 16 pixels.
@@ -153,13 +155,8 @@ void updateSprites() {
         sprites[s].x = sprites[s].x + sprites[s].x_speed;
         sprites[s].y = sprites[s].y + sprites[s].y_speed;
 
-        if (sprites[s].x > (VGA_VIRTUAL_WIDTH - sprites[s].width) || sprites[s].x < 0) sprites[s].x -= sprites[s].x;
-
-//        if (sprites[s].x < 0) sprites[s].x = vgaParams.vga_virtual_pixel_width + (BUFFER_PADDING - 32 - 1);
-//        if (sprites[s].x > vgaParams.vga_virtual_pixel_width + (BUFFER_PADDING - 32)) sprites[s].x = 0;
-
-//        if (sprites[s].y < 0 - sprites[s].height) sprites[s].y = vgaParams.vga_virtual_pixel_height;
-//        if (sprites[s].y > vgaParams.vga_virtual_pixel_height) sprites[s].y = 0 - sprites[s].height;
+        if (sprites[s].x > vgaParams.vga_virtual_pixel_width + 64 - 16) sprites[s].x = 0;
+        if (sprites[s].x < 0) sprites[s].x = (vgaParams.vga_virtual_pixel_width + 64 - 16); // buffer padding - sprite width
     }
 }
 

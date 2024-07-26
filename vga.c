@@ -61,8 +61,9 @@ uint32_t __aligned(4) syncDataActive[4];  // active display area
 uint32_t __aligned(4) syncDataPorch[4];   // vertical porch
 uint32_t __aligned(4) syncDataSync[4];    // vertical sync
 
-uint16_t __aligned(4) rgbDataBufferA[VGA_VIRTUAL_WIDTH];
-uint16_t __aligned(4) rgbDataBufferB[VGA_VIRTUAL_WIDTH];
+#define BUFFER_PADDING 64
+uint16_t __aligned(4) rgbDataBufferA[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
+uint16_t __aligned(4) rgbDataBufferB[VGA_VIRTUAL_WIDTH + BUFFER_PADDING];
 
 #define SYNC_LINE_ACTIVE 0
 #define SYNC_LINE_FPORCH 1
@@ -271,7 +272,7 @@ static void __time_critical_func(dmaIrqHandler)(void) {
         uint32_t pxLine = to_quotient_u32(pxLineVal);
         uint32_t pxLineRpt = to_remainder_u32(pxLineVal);
 
-        dma_channel_set_read_addr(rgbDmaChan, (pxLine & 1) ? rgbDataBufferB : rgbDataBufferA, true);
+        dma_channel_set_read_addr(rgbDmaChan, (pxLine & 1) ? rgbDataBufferB + 32 : rgbDataBufferA + 32, true);
 
         // need a new line every X display lines
         if (pxLineRpt == 0) {
@@ -336,11 +337,13 @@ void vgaInit(VgaInitParams params, VgaParams modeParams) {
     multicore_launch_core1(vgaLoop);
 }
 
-
+// Characters (8x8)
 void scanline_chars(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
     drawChars(raster_y, vgaParams.vga_virtual_pixel_height, pixels);
 }
 
+
+// Character (8x8) scanline with sprites
 void scanline_chars_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
     uint16_t screenWidth = vgaParams.vga_virtual_pixel_width;
     uint16_t screenHeight = vgaParams.vga_virtual_pixel_height;
@@ -367,7 +370,8 @@ void scanline_bitmap_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_vi
     }
 }
 
-void scanline_map_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width]) {
+// Map (Tile) scanline with sprites
+void scanline_map_sprites(uint16_t raster_y, uint16_t pixels[vgaParams.vga_virtual_pixel_width + BUFFER_PADDING]) {
     uint16_t screenWidth = vgaParams.vga_virtual_pixel_width;
     uint16_t screenHeight = vgaParams.vga_virtual_pixel_height;
 

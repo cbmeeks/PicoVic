@@ -36,21 +36,23 @@ int main(void) {
     VgaParams vgaParams = getScreenModeParams(VGA_640x480_60Hz);
 
     vgaInit(vgaInitParams, vgaParams);
+    initCharMode();
     initSprites(vgaParams);
 
 
     int sprites_per_scanline = 24;
     for (int i = 0; i < sprites_per_scanline; i++) {
-        setSprite(i, 1 + (i * 8), 64, 0, 0);
+        setSprite(i, 1 + (i * 8), 64, 1, 0);
         setSpriteFrame(i, blank16x16);
-        setSpriteSize(i, 16, 16);
+        setSpriteSize(i, 16, 192);
         setSpriteVisible(i, true);
-        setSpritePalette(i, i % 4);
+        setSpritePalette(i, i % 6);
     }
 //    setSpriteFrame(11, samus);
 //    setSpriteSize(11, 16, 48);
 //    setSpriteSpeed(11, 1, 0);
-
+//    setSpritePalette(11, 6);
+//
 //    setSpriteFrame(1, samus);
 //    setSpriteSize(1, 16, 48);
 //    setSpriteFrame(3, samus);
@@ -62,12 +64,18 @@ int main(void) {
 //    setSpriteFrame(10, samus);
 //    setSpriteSize(10, 16, 48);
 
+
+    setTextCursor(0, 0);
+    setPalette(0, 0x0000);
+    setPalette(1, 0x0a00);
+
     uint16_t color = 0;
     while (1) {
         tight_loop_contents();
+        drawCharacterString("HELLO WORLD! ");
 
 //        fillRect(rand() % 320, rand() % 240, rand() % 64, rand() % 64, rand() % 4096);
-//        sleep_ms(8);
+        sleep_ms(64);
     }
 
     return 0;

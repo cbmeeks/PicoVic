@@ -52,7 +52,7 @@ uint8_t map_tile_palettes[300] = {
 
 // This is the ORIGINAL code
 void
-__no_inline_not_in_flash_func(drawMap)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
+__no_inline_not_in_flash_func(drawMap)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth + 64]) {
     if (raster_y >= screenHeight) return;
 
     int map_row_offset = (raster_y / TILE_HEIGHT) * 20;
@@ -80,29 +80,30 @@ __no_inline_not_in_flash_func(drawMap)(uint16_t screenWidth, uint16_t screenHeig
         uint8_t ce = ((line & 0b00000000000000000000000000001100) >> 2);
         uint8_t cf = ((line & 0b00000000000000000000000000000011) >> 0);
 
-        pixels[x * TILE_WIDTH] = tile_palettes[tile_palette].color[c0];
-        pixels[x * TILE_WIDTH + 1] = tile_palettes[tile_palette].color[c1];
-        pixels[x * TILE_WIDTH + 2] = tile_palettes[tile_palette].color[c2];
-        pixels[x * TILE_WIDTH + 3] = tile_palettes[tile_palette].color[c3];
-        pixels[x * TILE_WIDTH + 4] = tile_palettes[tile_palette].color[c4];
-        pixels[x * TILE_WIDTH + 5] = tile_palettes[tile_palette].color[c5];
-        pixels[x * TILE_WIDTH + 6] = tile_palettes[tile_palette].color[c6];
-        pixels[x * TILE_WIDTH + 7] = tile_palettes[tile_palette].color[c7];
-        pixels[x * TILE_WIDTH + 8] = tile_palettes[tile_palette].color[c8];
-        pixels[x * TILE_WIDTH + 9] = tile_palettes[tile_palette].color[c9];
-        pixels[x * TILE_WIDTH + 10] = tile_palettes[tile_palette].color[ca];
-        pixels[x * TILE_WIDTH + 11] = tile_palettes[tile_palette].color[cb];
-        pixels[x * TILE_WIDTH + 12] = tile_palettes[tile_palette].color[cc];
-        pixels[x * TILE_WIDTH + 13] = tile_palettes[tile_palette].color[cd];
-        pixels[x * TILE_WIDTH + 14] = tile_palettes[tile_palette].color[ce];
-        pixels[x * TILE_WIDTH + 15] = tile_palettes[tile_palette].color[cf];
+        pixels[x * TILE_WIDTH + 32] = tile_palettes[tile_palette].color[c0];        // add 32 to offset the drawing for sprite borders
+        pixels[x * TILE_WIDTH + 1 + 32] = tile_palettes[tile_palette].color[c1];
+        pixels[x * TILE_WIDTH + 2 + 32] = tile_palettes[tile_palette].color[c2];
+        pixels[x * TILE_WIDTH + 3 + 32] = tile_palettes[tile_palette].color[c3];
+        pixels[x * TILE_WIDTH + 4 + 32] = tile_palettes[tile_palette].color[c4];
+        pixels[x * TILE_WIDTH + 5 + 32] = tile_palettes[tile_palette].color[c5];
+        pixels[x * TILE_WIDTH + 6 + 32] = tile_palettes[tile_palette].color[c6];
+        pixels[x * TILE_WIDTH + 7 + 32] = tile_palettes[tile_palette].color[c7];
+        pixels[x * TILE_WIDTH + 8 + 32] = tile_palettes[tile_palette].color[c8];
+        pixels[x * TILE_WIDTH + 9 + 32] = tile_palettes[tile_palette].color[c9];
+        pixels[x * TILE_WIDTH + 10 + 32] = tile_palettes[tile_palette].color[ca];
+        pixels[x * TILE_WIDTH + 11 + 32] = tile_palettes[tile_palette].color[cb];
+        pixels[x * TILE_WIDTH + 12 + 32] = tile_palettes[tile_palette].color[cc];
+        pixels[x * TILE_WIDTH + 13 + 32] = tile_palettes[tile_palette].color[cd];
+        pixels[x * TILE_WIDTH + 14 + 32] = tile_palettes[tile_palette].color[ce];
+        pixels[x * TILE_WIDTH + 15 + 32] = tile_palettes[tile_palette].color[cf];
     }
 }
 
 
 // This is my first attempt at optimizing
 void
-__no_inline_not_in_flash_func(drawMapOptimized1)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
+__no_inline_not_in_flash_func(drawMapOptimized1)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y,
+                                                 uint16_t pixels[screenWidth]) {
     if (raster_y >= screenHeight) return;
 
     int map_row_offset = (raster_y / TILE_HEIGHT) * 20;
@@ -209,7 +210,8 @@ __no_inline_not_in_flash_func(drawMapOptimized1)(uint16_t screenWidth, uint16_t 
 
 // This is my second attempt at optimizing
 void
-__no_inline_not_in_flash_func(drawMapOptimized2)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y, uint16_t pixels[screenWidth]) {
+__no_inline_not_in_flash_func(drawMapOptimized2)(uint16_t screenWidth, uint16_t screenHeight, uint16_t raster_y,
+                                                 uint16_t pixels[screenWidth]) {
     if (raster_y >= screenHeight) return;
 
     int map_row_offset = (raster_y / TILE_HEIGHT) * 20;
