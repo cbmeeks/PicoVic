@@ -1,8 +1,6 @@
-
+#include <pico/stdlib.h>
 #include "tiles.h"
 #include "vga.h"
-
-#define __no_inline_not_in_flash_func(func) func
 
 static TilePalette tile_palettes[NUMBER_OF_TILE_PALETTES] = {
         {0x0000, 0x009a, 0x042f, 0x08ef},

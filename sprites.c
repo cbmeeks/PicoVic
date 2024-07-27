@@ -1,7 +1,7 @@
+#include <pico/stdlib.h>
 #include "sprites.h"
 #include "vga.h"
 
-#define __no_inline_not_in_flash_func(func) func
 
 /*
  * Sprites
